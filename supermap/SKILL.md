@@ -1,3 +1,22 @@
+---
+name: supermap-gis-bridge
+description: Use when the user asks to inspect, back up, or operate a SuperMap workspace/datasource (.smwu/.sxwu/.udbx), or asks for SuperMap iDesktopX live control (map export, layer visibility, zoom, label thematic, save). Bridges an AI agent to SuperMap through iobjectspy (headless) or an in-app live bridge; read-only by default, writes gated by confirm.
+whenToUse: 盘点或备份 SuperMap 工程、对 iDesktopX 当前工作空间做地图级操作、排查 iobjectspy 与 iObjects Java 环境
+---
+
+> **实机验证状态（2026-10-24）**：已在一台 SuperMap **iDesktop 10i(2020)** 环境完成
+> 第一轮实机校准（iObjects Java 10.1.0.19113、iobjectspy 10.1.0、iDesktop 自带
+> Python 3.5.4 独立运行时）：
+> - **无头桥已实机验证**：preflight / backup / inspect 三件套已对真实工作空间验证通过；
+> - **实时桥 = `mode=file-fallback`**：该环境没有 iDesktopX，实时桥只能在**工作空间
+>   副本**上运行，界面不会刷新，**不许报成实时接入**；13 个工具已全部实机验证
+>   （含 3 个写类，写类均带 `confirm=true` 闸，只在用户明确同意后使用）；
+> - 写操作落盘的关键：改完地图必须 `ws.set_map(name, map)` 回写（get_map 返回的是
+>   包装副本）；标签专题必须走 `Map.add_dataset(dataset, layer_setting=ThemeLabel)`，
+>   旧的专题设置路径是假成功（不渲染、不落盘）。
+> 验证环境、13 工具清单、逐项结论与运行时搭建见 `docs/CALIBRATION-RESULTS-20261024.md`，
+> 动手前必读；iDesktopX 实时模式仍待在有 X 的环境按校准工单继续校准。
+
 # Skill: supermap-gis-bridge（SuperMap 工程文件桥接）
 
 让 AI Agent 通过 SuperMap 官方 Python 组件 **iobjectspy** 操作 SuperMap 工程文件

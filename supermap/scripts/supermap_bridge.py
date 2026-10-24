@@ -167,7 +167,13 @@ def _safe_str(v):
 def _ds_summary(ds):
     alias, _ = _try_attrs(ds, ["get_alias", "alias", "get_name", "name"])
     engine, _ = _try_attrs(ds, ["get_engine_type", "engine_type"])
-    return {"alias": _safe_str(alias), "engine": _safe_str(engine)}
+    if engine is None:
+        # iobjectspy 10.1.0 实机验证：引擎类型挂在 connection_info.type 上
+        conn, _ = _try_attrs(ds, ["get_connection_info", "connection_info"])
+        if conn is not None:
+            engine, _ = _try_attrs(conn, ["get_type", "type"])
+    return {"alias": _safe_str(alias),
+            "engine": _safe_str(getattr(engine, "name", engine))}
 
 
 def _dataset_entry(d):
@@ -180,6 +186,21 @@ def _dataset_entry(d):
 # ------------------------------------------------------------------ inspect
 def _open_workspace(iobjectspy, path, notes):
     """多策略打开工作空间，返回 (workspace, strategy_name)。"""
+    # 策略 0（iDesktop 10i + iobjectspy 10.1.0 实机验证）：WorkspaceConnectionInfo 传入路径，
+    # 且 Workspace.open() 返回的是"新"的工作空间对象——必须接住返回值，旧句柄会已释放。
+    try:
+        from iobjectspy import Workspace, WorkspaceConnectionInfo
+        ws0 = Workspace()
+        opened = ws0.open(WorkspaceConnectionInfo(path))
+        if opened is not None:
+            return opened, "Workspace.open(WorkspaceConnectionInfo)->returned"
+        try:
+            ws0.close()
+        except Exception:
+            pass
+        notes.append("WorkspaceConnectionInfo 策略返回空对象")
+    except Exception as e:
+        notes.append("WorkspaceConnectionInfo strategy failed: %s" % e)
     # 策略 1：模块级 helper open_workspace
     helper = getattr(iobjectspy, "open_workspace", None)
     if callable(helper):
@@ -243,6 +264,50 @@ def _inspect_datasource(ds, notes):
     return info
 
 
+def _copy_sidecar_datasources(src, tmpdir, notes):
+    """把工作空间同目录（及其一级子目录）里的数据源文件复制进临时目录。
+
+    iDesktop 工作空间里的数据源连接常是相对路径（如 jidi.udbx），只复制 .smwu
+    会让数据源指向不存在的临时路径，盘点时表现为"数据集为空"的假象。
+    只复制数据文件，不碰文档/图片等其它内容。
+    """
+    exts = (".udb", ".udbx", ".udd")
+    src_dir = os.path.dirname(os.path.abspath(src))
+    copied = []
+
+    def _walk(base, depth):
+        if depth > 1:
+            return
+        try:
+            entries = os.listdir(base)
+        except Exception:
+            return
+        for name in entries:
+            full = os.path.join(base, name)
+            if os.path.abspath(full) == os.path.abspath(src):
+                continue
+            if os.path.isdir(full):
+                _walk(full, depth + 1)
+                continue
+            if not name.lower().endswith(exts):
+                continue
+            rel = os.path.relpath(full, src_dir)
+            dst = os.path.join(tmpdir, rel)
+            try:
+                parent = os.path.dirname(dst)
+                if parent and not os.path.isdir(parent):
+                    os.makedirs(parent)
+                shutil.copy2(full, dst)
+                copied.append(rel.replace("\\", "/"))
+            except Exception as e:
+                notes.append("复制数据源 %s 失败: %s" % (rel, e))
+
+    _walk(src_dir, 0)
+    if copied:
+        notes.append("为解析相对路径，已一并复制同级数据源: %s" % ", ".join(copied))
+    return copied
+
+
 def cmd_inspect(args):
     src = args.workspace
     if not os.path.isfile(src):
@@ -260,6 +325,7 @@ def cmd_inspect(args):
     tmpdir = tempfile.mkdtemp(prefix="smbridge-")
     work_copy = os.path.join(tmpdir, os.path.basename(src))
     shutil.copy2(src, work_copy)
+    _copy_sidecar_datasources(src, tmpdir, notes)
     ws = None
     try:
         ws, strategy = _open_workspace(iobjectspy, work_copy, notes)
@@ -300,7 +366,8 @@ def cmd_inspect(args):
 
 def main():
     p = argparse.ArgumentParser(prog="supermap_bridge")
-    sub = p.add_subparsers(dest="cmd", required=True)
+    # Python 3.5 的 argparse 不支持 add_subparsers(required=True)，改为手动校验
+    sub = p.add_subparsers(dest="cmd")
     pp = sub.add_parser("preflight")
     pp.add_argument("--iobjects-java", default=None)
     pp.set_defaults(func=cmd_preflight)
@@ -312,7 +379,11 @@ def main():
     ip.add_argument("--iobjects-java", default=None)
     ip.set_defaults(func=cmd_inspect)
     args = p.parse_args()
-    return args.func(args)
+    func = getattr(args, "func", None)
+    if func is None:
+        p.print_help()
+        return 2
+    return func(args)
 
 
 if __name__ == "__main__":

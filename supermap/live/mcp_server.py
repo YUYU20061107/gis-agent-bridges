@@ -3,35 +3,106 @@
 mcp_server.py — MCP 服务端（stdio，纯标准库，v0.3）
 
 把 MCP 工具调用转发到 iDesktopX 内的应用内桥（inapp_bridge.py，127.0.0.1:47615）。
-把本服务端注册到你的 AI Agent / MCP 客户端的 MCP 配置后，Agent 即可用下列工具
-操作 iDesktopX 当前工作空间：
+注册到你的 AI Agent / MCP 客户端的 MCP 配置后，Agent 即可用下列工具操作 iDesktopX 当前工作空间：
   只读：supermap_ping / supermap_discover / supermap_workspace_info /
         supermap_list_datasources / supermap_list_datasets / supermap_list_maps /
         supermap_list_layers / supermap_export_map_image
   视图级（只改显示、可逆）：supermap_set_layer_visible / supermap_zoom_to_dataset
   写类（须 confirm=true）：supermap_add_dataset_to_map / supermap_make_label_thematic /
         supermap_save_workspace
-v0.3 的操作类工具为实验性实现，未在真实 iDesktopX 上验证；桥侧调不通时会
+v0.3 的操作类工具为实验性实现，未在真实 iDesktopX 上验证（iDesktop 10i 文件回退
+模式已实机校准，见 docs/CALIBRATION-RESULTS-20261024.md）；桥侧调不通时会
 返回结构化错误，Agent 必须如实回报，不许把错误说成成功。
 
 环境变量：
   SM_BRIDGE_HOST（默认 127.0.0.1）、SM_BRIDGE_PORT（默认 47615）、
-  SM_BRIDGE_TOKEN（优先；否则读 ~/.supermap-live-bridge.token）
+  SM_BRIDGE_TOKEN（优先；否则读 SM_BRIDGE_TOKEN_FILE 或 ~/.supermap-live-bridge.token）
+
+自动启动（用时必开）：
+  SM_BRIDGE_AUTOSTART=1
+  SM_BRIDGE_AUTOSTART_WORKSPACE=<默认工作空间 .smwu 路径>
+  SM_BRIDGE_AUTOSTART_PYTHON=<带 iobjectspy 的 Python 路径；未配置则自动启动不可用>
+  SM_BRIDGE_LOG_FILE=<桥日志，默认 token 文件同目录 bridge.log>
+  当桥端口不通时，首次 tools/call 会自动在工作空间**副本**上拉起桥（不碰原件）。
+
 日志写 stderr，stdout 只走 MCP 协议。
 """
 import json
 import os
 import socket
+import subprocess
 import sys
+import time
 
 HOST = os.environ.get("SM_BRIDGE_HOST", "127.0.0.1")
 PORT = int(os.environ.get("SM_BRIDGE_PORT", "47615"))
-TOKEN_FILE = os.path.join(os.path.expanduser("~"), ".supermap-live-bridge.token")
+TOKEN_FILE = os.environ.get("SM_BRIDGE_TOKEN_FILE") or \
+    os.path.join(os.path.expanduser("~"), ".supermap-live-bridge.token")
 PROTOCOL_VERSION = "2024-11-05"
+
+# ---- 自动启动配置（缺省全部关闭，只做“用时必开”，不改变桥的安全边界） ----
+AUTOSTART = os.environ.get("SM_BRIDGE_AUTOSTART", "").strip().lower() in ("1", "true", "yes", "on")
+AUTOSTART_WORKSPACE = os.environ.get("SM_BRIDGE_AUTOSTART_WORKSPACE", "").strip()
+AUTOSTART_PYTHON = os.environ.get("SM_BRIDGE_AUTOSTART_PYTHON", "").strip()
+BRIDGE_SCRIPT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "run_bridge_copy.py")
+LOG_FILE = os.environ.get("SM_BRIDGE_LOG_FILE") or \
+    os.path.join(os.path.dirname(TOKEN_FILE), "bridge.log")
+
+_AUTOSTART = {"child": None, "spawned": False}
 
 
 def log(*a):
     print("[supermap-mcp]", *a, file=sys.stderr, flush=True)
+
+
+def _port_open(timeout=1):
+    try:
+        with socket.create_connection((HOST, PORT), timeout=timeout):
+            return True
+    except Exception:
+        return False
+
+
+def ensure_bridge(wait_seconds=90):
+    """桥没在跑且配置了自动启动时，在副本上拉起桥并等它就绪。"""
+    if _port_open():
+        return True
+    if not AUTOSTART or not AUTOSTART_WORKSPACE:
+        return False
+    if not (os.path.isfile(AUTOSTART_WORKSPACE) and os.path.isfile(BRIDGE_SCRIPT)
+            and os.path.isfile(AUTOSTART_PYTHON)):
+        log("autostart skipped: missing workspace / bridge script / python")
+        return False
+    try:
+        log_dir = os.path.dirname(LOG_FILE)
+        if log_dir and not os.path.isdir(log_dir):
+            os.makedirs(log_dir)
+        fh = open(LOG_FILE, "ab", buffering=0)
+        flags = 0
+        if os.name == "nt":
+            flags = 0x00000008 | 0x00000200  # DETACHED_PROCESS | CREATE_NEW_PROCESS_GROUP
+        child = subprocess.Popen([AUTOSTART_PYTHON, BRIDGE_SCRIPT, AUTOSTART_WORKSPACE],
+                                 stdin=subprocess.DEVNULL, stdout=fh, stderr=fh,
+                                 creationflags=flags,
+                                 cwd=(log_dir if log_dir and os.path.isdir(log_dir)
+                                      else os.path.dirname(TOKEN_FILE) or None))
+        _AUTOSTART["child"] = child
+        _AUTOSTART["spawned"] = True
+        log("autostart bridge pid=%s workspace=%s" % (child.pid, AUTOSTART_WORKSPACE))
+    except Exception as e:
+        log("autostart failed:", e)
+        return False
+    deadline = time.time() + wait_seconds
+    while time.time() < deadline:
+        if _port_open():
+            log("autostart bridge ready")
+            return True
+        if _AUTOSTART["child"].poll() is not None:
+            log("autostart bridge exited code=%s (see %s)" % (_AUTOSTART["child"].returncode, LOG_FILE))
+            return False
+        time.sleep(1)
+    log("autostart timeout after %ss" % wait_seconds)
+    return False
 
 
 def get_token():
@@ -138,6 +209,15 @@ def handle(msg):
                 "content": [{"type": "text", "text": "unknown tool: %s" % name}],
                 "isError": True}}
         try:
+            # 用时必开：桥没在跑且允许自动启动时，先在副本上拉起桥再调用
+            if not _port_open():
+                started = ensure_bridge()
+                if not started and AUTOSTART:
+                    return {"jsonrpc": "2.0", "id": mid, "result": {
+                        "content": [{"type": "text", "text":
+                                     "桥未运行，自动启动失败。检查 SM_BRIDGE_AUTOSTART_WORKSPACE 是否存在；"
+                                     "日志: %s" % LOG_FILE}],
+                        "isError": True}}
             result = call_bridge(BRIDGE_TOOL[name], args)
             text = json.dumps(result, ensure_ascii=False, indent=2)
             return {"jsonrpc": "2.0", "id": mid, "result": {

@@ -5,8 +5,9 @@
 > *headless bridge* that inventories / backs up workspace files by running scripts
 > against copies only, and a *live MCP bridge* that runs inside SuperMap iDesktopX
 > (Blender-MCP style) so any MCP client can inspect and operate the workspace you
-> currently have open, in real time. The live mode is experimental and has not yet
-> been calibrated on a real iDesktopX installation — see `docs/CALIBRATION.md`.
+> currently have open, in real time. The live mode's file-fallback path has been calibrated on a real
+> iDesktop 10i installation (2026-10-24, 13/13 tools verified); the real-time
+> iDesktopX mode is still experimental — see `docs/CALIBRATION-RESULTS-20261024.md`.
 
 让 AI Agent 通过 SuperMap 官方 Python 组件 **iobjectspy** 操作 SuperMap 工程
 （工作空间 *.smwu / *.sxwu、数据源 *.udbx）的受控桥接工具，而不是让 Agent 直接
@@ -37,7 +38,10 @@ iobjectspy 关键类的真实方法清单，供维护者据此收紧桥接脚本
 Blender MCP 式接入：桥脚本跑在 **iDesktopX 进程内的 Python 窗口**里，拿到当前
 打开的工作空间，在本机开一个 localhost 服务；你的 AI Agent / MCP 客户端经一个
 纯标准库的 stdio MCP 服务端调用工具，操作实时反映在 GUI 界面里。
-使用说明见 `live/LIVE.md`，自检脚本 `live/selftest.py`。
+使用说明见 `live/LIVE.md`，自检脚本 `live/selftest.py`。没有 iDesktopX 时，桥也可由
+`live/run_bridge_copy.py` 在**工作空间副本**上以文件回退模式启动（iDesktop 10i
+已实机校准），或把 .smwu 拖到 `live/start_bridge.cmd` 上启动；此模式下界面不刷新，
+不得称实时接入。
 
 ## 架构
 
@@ -137,21 +141,27 @@ Blender MCP 式接入：桥脚本跑在 **iDesktopX 进程内的 Python 窗口**
 
 ## 状态声明（请先读这一段）
 
-- 无头桥：已在无 SuperMap 的环境验证脚本语法、backup 的真实复制 + sha256、
-  无组件环境下的报错 JSON 与退出码；iobjectspy 实机路径待使用者校准。
+- 无头桥：已于 2026-10-24 在 iDesktop 10i(2020) + iobjectspy 10.1.0 环境实机
+  校准通过（preflight 许可冒烟、backup 真实复制 + sha256、inspect 对真实工作
+  空间盘点，含相对路径数据源连带复制），见
+  [docs/CALIBRATION-RESULTS-20261024.md](docs/CALIBRATION-RESULTS-20261024.md)。
 - 实时桥：已验证端到端协议层（`live/selftest.py` 6/6 PASS：握手、13 工具清单、
   ping 转发、discover 结构化回报、保存闸门、错误 token 拒绝）。
-  **但实时模式尚未在真实 iDesktopX 上完成校准**：当前工作空间的注入方式、
-  Map / Layers / ThemeLabel / 导出 API 的真实签名都因版本而异，桥内采用多策略
-  尝试 + 命中策略回报（via 字段）的实验性实现。首次实机使用必须按
-  [docs/CALIBRATION.md](docs/CALIBRATION.md) 的顺序逐项校准
+  **文件回退模式已实机校准**：2026-10-24 在没有 iDesktopX 的 iDesktop 10i
+  环境上，实时桥以 file-fallback 模式（操作带时间戳的工作空间副本、GUI 不刷新）
+  在 13/13 工具上实机通过，写类在副本上验证持久化、原件未变，见
+  [docs/CALIBRATION-RESULTS-20261024.md](docs/CALIBRATION-RESULTS-20261024.md)。
+  **iDesktopX 实时模式仍未校准**：当前工作空间的注入方式与部分 API 签名仍因
+  版本而异，桥内采用多策略尝试 + 命中策略回报（via 字段）的实现。首次在有 X
+  的环境使用必须按 [docs/CALIBRATION.md](docs/CALIBRATION.md) 的顺序逐项校准
   （先 discover 钉死实时接入策略，操作类工具只在工作空间副本上验证）。
 - iobjectspy 不同小版本的 API 命名有差异，桥接脚本会把命中的策略记进输出
   （`opened_via` / `api_path` / `via`），校准后请据实收紧并注明实机版本。
 
 ## 环境要求
 
-- SuperMap iDesktopX（实时桥）或 iDesktop 10i（无头桥参考基线），
+- SuperMap iDesktopX（实时桥实时模式）或 iDesktop 10i（无头桥，以及实时桥
+  文件回退模式——已实机校准），
   以及与之版本匹配的 **iobjectspy 10.x** 与 iObjects Java，Java 8+。
 - Python 3.x。
 - 任一支持 stdio 的 MCP 客户端 / AI Agent（实时桥）；无头桥只需要能执行脚本的 Agent。
@@ -165,7 +175,8 @@ supermap-gis-bridge/
 ├── SKILL.md                无头桥操作手册（环境发现、命令、安全纪律、报错对照、回报格式）
 ├── ROADMAP.md              版本演进、待实机校准清单、后续候选路线评估
 ├── docs/
-│   └── CALIBRATION.md      实机校准指南（顺序、验收标准、回报格式、红线）
+│   ├── CALIBRATION.md      实机校准指南（顺序、验收标准、回报格式、红线）
+│   └── CALIBRATION-RESULTS-20261024.md  iDesktop 10i 实机校准结果（环境、13/13 清单、API 事实）
 ├── scripts/
 │   ├── supermap_bridge.py  无头桥脚本（preflight / backup / inspect，单行 JSON 输出）
 │   └── probe_api.py        校准探针，输出本机 iobjectspy 的真实方法清单
@@ -173,6 +184,8 @@ supermap-gis-bridge/
     ├── inapp_bridge.py     iDesktopX 应用内桥（localhost 服务，单文件可 exec）
     ├── mcp_server.py       MCP 服务端（stdio 转发，纯标准库）
     ├── selftest.py         实时桥一键自检（无 SuperMap 环境可跑协议层）
+    ├── run_bridge_copy.py  文件回退启动器：在工作空间副本上起桥（原件只读）
+    ├── start_bridge.cmd    Windows 拖拽启动器（文件回退模式）
     └── LIVE.md             实时桥使用说明（启动、工具清单与风险等级、纪律）
 ```
 

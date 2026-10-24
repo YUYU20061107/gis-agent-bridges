@@ -20,7 +20,7 @@ live in-app MCP bridge — all in one repo for easy reuse.
 
 | 软件 | 目录 | 形态 | MCP 工具数 | 状态 |
 |---|---|---|---|---|
-| SuperMap iDesktopX | `supermap/` | 实时＋无头 | 13 | v0.3 · 未实机校准 |
+| SuperMap iDesktopX | `supermap/` | 实时＋无头 | 13 | v0.3 · 文件回退模式已实机校准（iDesktop 10i，13/13）；iDesktopX 实时待验证 |
 | ArcGIS Pro | `arcgis-pro/` | 实时＋无头 | 13 | v0.1 · 未实机校准 |
 | ArcMap（Esri 已退役，个人自用向） | `arcmap/` | 实时＋无头 | 10 | v0.1 · Python 2.7 待实机验证 |
 | QGIS | `qgis/` | 实时＋无头 | 12 | v0.1 · 未实机校准 |

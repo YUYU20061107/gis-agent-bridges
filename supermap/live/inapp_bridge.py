@@ -26,7 +26,9 @@ make_label_thematic / export_map_image / list_layers）全部为实验性实现�
 地图对象、图层集合、专题图与导出 API 在不同 iDesktopX/iobjectspy 版本上命名差异大，
 一律多策略尝试并回报命中的策略（via 字段）；拿不到对象或 API 不匹配时返回
 结构化错误（NOT_SUPPORTED / *_FAILED，附现场方法清单线索），绝不假装成功。
-上述工具均未在真实 iDesktopX 上验证，首次实机使用须按 docs/CALIBRATION.md 的顺序校准。
+上述工具的 iDesktopX 实时路径仍未在真实 iDesktopX 上验证，首次实机使用须按
+校准指南的顺序逐项校准；文件回退路径已在 iDesktop 10i 上完成实机校准，
+见 docs/CALIBRATION-RESULTS-20261024.md。
 
 单文件约束：本文件必须能被 iDesktopX Python 窗口单文件 exec 运行，无法 import
 同包模块，因此数据源/数据集枚举的共享逻辑（ENUM-SHARED 块）以内联副本形式维护，
@@ -36,14 +38,39 @@ import json
 import os
 import socket
 import sys
+import tempfile
 import threading
 import traceback
 import uuid
 
+
+def _ensure_writable_cwd():
+    """iobjectspy 会往当前工作目录写 iobjectspy.log；CWD 只读时（如被宿主程序以子进程拉起、当前目录又在
+    iDesktopX 安装目录）会 PermissionError 导致工作空间打不开。这里检测并切到临时目录。
+    """
+    try:
+        probe = os.path.join(os.getcwd(), ".sm_bridge_cwd_probe")
+        with open(probe, "w") as f:
+            f.write("")
+        os.remove(probe)
+        return
+    except Exception:
+        pass
+    try:
+        os.chdir(tempfile.mkdtemp(prefix="sm-bridge-"))
+    except Exception:
+        pass
+
+
+_ensure_writable_cwd()
+
 HOST = "127.0.0.1"
 PORT = 47615
-TOKEN_FILE = os.path.join(os.path.expanduser("~"), ".supermap-live-bridge.token")
-TOKEN = uuid.uuid4().hex
+# token 文件位置可用 SM_BRIDGE_TOKEN_FILE 覆盖（受限环境里 ~ 可能不可写）；MCP 侧同名变量
+TOKEN_FILE = os.environ.get("SM_BRIDGE_TOKEN_FILE") or \
+    os.path.join(os.path.expanduser("~"), ".supermap-live-bridge.token")
+# 沙箱/受限环境里子进程可能写不了 ~，允许用环境变量直接指定 token（MCP 侧同名变量优先读取）
+TOKEN = os.environ.get("SM_BRIDGE_TOKEN") or uuid.uuid4().hex
 
 _state = {"workspace": None, "mode": None, "attempts": []}
 
@@ -113,7 +140,13 @@ def _safe_str(v):
 def _ds_summary(ds):
     alias, _ = _try_attrs(ds, ["get_alias", "alias", "get_name", "name"])
     engine, _ = _try_attrs(ds, ["get_engine_type", "engine_type"])
-    return {"alias": _safe_str(alias), "engine": _safe_str(engine)}
+    if engine is None:
+        # iobjectspy 10.1.0 实机验证：引擎类型挂在 connection_info.type 上
+        conn, _ = _try_attrs(ds, ["get_connection_info", "connection_info"])
+        if conn is not None:
+            engine, _ = _try_attrs(conn, ["get_type", "type"])
+    return {"alias": _safe_str(alias),
+            "engine": _safe_str(getattr(engine, "name", engine))}
 
 
 def _dataset_entry(d):
@@ -164,9 +197,12 @@ def discover_workspace(force=False):
     path = os.environ.get("SM_LIVE_WORKSPACE_PATH")
     if path and os.path.isfile(path):
         try:
-            from iobjectspy import Workspace
+            from iobjectspy import Workspace, WorkspaceConnectionInfo
             ws = Workspace()
-            ws.open(path)
+            # iobjectspy 10.1.0 实测：open() 接收 WorkspaceConnectionInfo，且返回新对象
+            opened = ws.open(WorkspaceConnectionInfo(path))
+            if opened is not None:
+                ws = opened
             attempts.append("file-fallback opened %s" % path)
             _state.update(workspace=ws, mode="file-fallback", attempts=attempts)
             return ws, "file-fallback", attempts
@@ -320,6 +356,25 @@ def _get_map(ws, map_name):
     return mobj, via, notes
 
 
+def _commit_map(ws, map_obj, notes):
+    """把改动后的地图写回工作空间（iobjectspy 10.1 实机结论）。
+
+    get_map/get_maps 每次都返回新的 Map 包装对象；只在包装对象上改图层/专题，
+    后续请求（以及 save()）都看不到。必须 ws.set_map(名字, map_obj) 回写，
+    再 save 才会落盘。返回是否回写成功。
+    """
+    name, _ = _try_attrs(map_obj, ["get_name", "name"])
+    if name is None:
+        notes.append("commit skipped: map 对象没有名字")
+        return False
+    res, via = _call_first(ws, ["set_map"], [(name, map_obj)], notes)
+    if res:
+        notes.append("已通过 %s 回写地图 %r" % (via, name))
+        return True
+    notes.append("地图回写失败（set_map 返回 %r）" % (res,))
+    return False
+
+
 def _layers_of(map_obj):
     layers, _via = _try_attrs(map_obj, ["get_layers", "layers"])
     if layers is None:
@@ -462,13 +517,16 @@ def tool_add_dataset_to_map(args):
     if via is None:
         raise RuntimeError("ADD_DATASET_FAILED: 全部添加策略失败；map_via=%s；notes=%s；"
                            "layers_methods=%s" % (map_via, notes, _methods_hint(layers)))
-    after_items = _to_list(layers)
+    # 刷新图层清单：iobjectspy 10.1 的 get_layers() 返回 list 快照，必须重新取一次
+    fresh_layers, _ = _try_attrs(map_obj, ["get_layers", "layers"])
+    after_items = _to_list(fresh_layers if fresh_layers is not None else layers)
+    committed = _commit_map(ws, map_obj, notes)
     return {"added": True, "mode": mode, "map_via": map_via, "via": via,
             "datasource": ds_alias, "dataset": ds_name,
-            "returned": _safe_str(result),
+            "returned": _safe_str(result), "committed": committed,
             "layers_before": before, "layers_after": len(after_items),
-            "note": "layers_after 未增加不等于失败（可能返回了新图层但集合视图未刷新），"
-                    "请用 list_layers 复核并以界面为准"}
+            "note": "committed=false 表示改动只在本次请求的 Map 包装对象上；"
+                    "committed=true 表示已 set_map 回写工作空间，后续 list_layers 应能看到"}
 
 
 def tool_set_layer_visible(args):
@@ -490,8 +548,10 @@ def tool_set_layer_visible(args):
     if via is None:
         raise RuntimeError("NOT_SUPPORTED: 图层对象无显隐设置途径；notes=%s；layer_methods=%s"
                            % (notes, _methods_hint(layer)))
+    committed = _commit_map(ws, map_obj, notes)
     return {"mode": mode, "map_via": map_via, "layer": names[idx], "index": idx,
-            "visible_set_to": visible, "visible_now": _layer_visible(layer), "via": via}
+            "visible_set_to": visible, "visible_now": _layer_visible(layer),
+            "via": via, "committed": committed}
 
 
 def _dataset_bounds(dataset_obj):
@@ -550,9 +610,14 @@ def tool_zoom_to_dataset(args):
         raise RuntimeError("NOT_SUPPORTED: 数据集范围不可得（bounds=%s）；"
                            "dataset_methods=%s" % (bounds, _methods_hint(dataset_obj)))
     map_obj, map_via, notes = _get_map(ws, args.get("map"))
-    rect = _make_rect(bounds["left"], bounds["bottom"], bounds["right"], bounds["top"], notes)
     via = None
-    if rect is not None:
+    # 策略 0（iobjectspy 10.1 实测）：dataset.bounds 本身就是 Rectangle，可直接传给 set_view_bounds
+    raw_rect, _ = _try_attrs(dataset_obj, ["get_bounds", "bounds"])
+    if raw_rect is not None:
+        _r, via = _call_first(map_obj, ["set_view_bounds", "set_view_extent"],
+                              [(raw_rect,)], notes)
+    rect = _make_rect(bounds["left"], bounds["bottom"], bounds["right"], bounds["top"], notes)
+    if via is None and rect is not None:
         _res, via = _call_first(map_obj,
                                 ["set_view_bounds", "set_view_extent", "zoom_to_bounds",
                                  "set_bounds", "setViewBounds"],
@@ -618,24 +683,42 @@ def tool_make_label_thematic(args):
     if expr_via is None:
         raise RuntimeError("NOT_SUPPORTED: ThemeLabel 无法设置标签字段 %r；notes=%s；"
                            "theme_methods=%s" % (field, notes, _methods_hint(theme)))
-    # 应用：策略 1 已有图层 set_theme；策略 2 Layers.add(dataset, theme) 新建专题图层
+    # 应用（iobjectspy 10.1 实机结论）：
+    #   - 已有图层没有可持久化的公开 set_theme；直接用 layer._set_theme 只改 Python 包装对象，
+    #     既不进渲染也不进 XML（两张导出图 sha256 相同，可复现）
+    #   - 这版唯一可靠的专题入口是 Map.add_dataset(dataset, layer_setting=Theme)，再用
+    #     ws.set_map 回写工作空间；重开副本后 get_theme() 仍是 ThemeLabel
     applied_via = None
-    if layer is not None:
-        _r, applied_via = _call_first(layer, ["set_theme", "setTheme"], [(theme,)], notes)
-        if applied_via is None:
-            applied_via = _set_first(layer, [], ["theme"], theme, notes)
-    if applied_via is None and dataset_obj is not None:
-        _r, applied_via = _call_first(layers, ["add", "add_theme"],
-                                      [(dataset_obj, theme), (dataset_obj, theme, True)],
-                                      notes)
+    committed = False
+    theme_now = None
+    if dataset_obj is None and layer is not None:
+        ds_of_layer, _ = _try_attrs(layer, ["get_dataset", "dataset"])
+        if ds_of_layer is not None:
+            dataset_obj = ds_of_layer
+            notes.append("从已有图层反查到数据集 %r" % _safe_str(getattr(ds_of_layer, "name", ds_of_layer)))
+    if dataset_obj is not None:
+        try:
+            new_layer = map_obj.add_dataset(dataset_obj, layer_setting=theme)
+            applied_via = "map.add_dataset(layer_setting=ThemeLabel)"
+            theme_now = type(new_layer.get_theme()).__name__ if new_layer is not None else None
+            committed = _commit_map(ws, map_obj, notes)
+        except Exception as e:
+            notes.append("add_dataset(layer_setting=theme) failed: %s" % e)
+    if applied_via is None and layer is not None:
+        _r, applied_via = _call_first(layer, ["set_theme", "setTheme", "_set_theme"],
+                                      [(theme,)], notes)
+        if applied_via is not None:
+            applied_via += " (仅包装对象，未验证持久化)"
     if applied_via is None:
         raise RuntimeError("THEMATIC_APPLY_FAILED: 专题图已构造（%s, 字段经 %s）但无法应用；"
                            "notes=%s；layers_methods=%s"
                            % (theme_via, expr_via, notes, _methods_hint(layers)))
     return {"thematic_created": True, "mode": mode, "map_via": map_via,
             "theme_via": theme_via, "expression_via": expr_via, "applied_via": applied_via,
-            "field": field, "layer": layer_names[layer_idx] if layer_idx is not None else None,
-            "note": "专题图是否在界面正确显示须人工核对；标签字段名大小写以数据集字段为准"}
+            "theme_now": theme_now, "committed": committed, "field": field,
+            "layer": layer_names[layer_idx] if layer_idx is not None else None,
+            "note": "专题图以新图层形式加入地图（数据图层仍在）；committed=true 表示已回写工作空间，"
+                    "save 后重开副本可看到 ThemeLabel"}
 
 
 def tool_export_map_image(args):
@@ -649,8 +732,29 @@ def tool_export_map_image(args):
         raise RuntimeError("BAD_ARGS: 输出目录不存在: %s" % out_dir)
     map_obj, map_via, notes = _get_map(ws, args.get("map"))
     width, height = args.get("width"), args.get("height")
+    # 策略 0（iobjectspy 10.1 实测）：output_to_file(file_name, output_bounds=None, dpi=0,
+    # image_size=None, ...)。尺寸必须用关键字 image_size=(w, h)；位置传元组会被当成 output_bounds。
+    exporter = getattr(map_obj, "output_to_file", None)
+    if callable(exporter):
+        try:
+            if isinstance(width, int) and isinstance(height, int):
+                exporter(out_path, image_size=(width, height))
+                used = "output_to_file(image_size=(w,h))"
+            else:
+                exporter(out_path)
+                used = "output_to_file()"
+            if os.path.isfile(out_path) and os.path.getsize(out_path) > 0:
+                return {"exported": True, "mode": mode, "map_via": map_via,
+                        "via": used, "path": out_path,
+                        "bytes": os.path.getsize(out_path)}
+            notes.append("%s 调用未报错但文件未落盘，不算成功" % used)
+        except Exception as e:
+            notes.append("output_to_file 关键字策略失败: %s" % e)
     arg_variants = [(out_path,), (out_path, "PNG")]
     if isinstance(width, int) and isinstance(height, int):
+        # iobjectspy 10.1 实测签名 output_to_file(file_name, image_size=None, ...)：
+        # 尺寸是 (width, height) 元组，而非两个位置参数
+        arg_variants.append((out_path, (width, height)))
         arg_variants.append((out_path, width, height))
     method_names = ["output_to_file", "output_to_image", "export_to_image",
                     "output_map_to_image", "save_to_file", "to_image", "output"]
@@ -714,8 +818,16 @@ def handle_request(req):
 
 
 def serve():
-    with open(TOKEN_FILE, "w", encoding="utf-8") as f:
-        f.write(TOKEN)
+    if not os.environ.get("SM_BRIDGE_TOKEN"):
+        try:
+            token_dir = os.path.dirname(TOKEN_FILE)
+            if token_dir and not os.path.isdir(token_dir):
+                os.makedirs(token_dir)
+            with open(TOKEN_FILE, "w", encoding="utf-8") as f:
+                f.write(TOKEN)
+        except Exception as e:
+            print("[supermap-live-bridge] token file write failed: %s" % e)
+            print("[supermap-live-bridge] 可改用环境变量 SM_BRIDGE_TOKEN 指定 token")
     srv = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     srv.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
     srv.bind((HOST, PORT))
