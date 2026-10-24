@@ -21,6 +21,16 @@ import re
 import shutil
 import sys
 
+# stdout 锁定 UTF-8：中文 Windows 管道默认 GBK 编码会让含中文/生僻字的
+# JSON 输出乱码或 UnicodeEncodeError 崩溃（与各包无头桥同口径）。
+if getattr(sys.stdout, "encoding", None) != "utf-8":
+    try:
+        sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8",
+                                      errors="replace")
+    except Exception:
+        pass
+
+
 
 def copy_workspace_tree(workspace, dest):
     src_dir = os.path.dirname(os.path.abspath(workspace))

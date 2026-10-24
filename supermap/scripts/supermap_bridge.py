@@ -31,8 +31,54 @@ except Exception:
     pass
 
 
+# ---- 序列化净化（与 arcmap 已修版同口径） ----
+try:
+    _TEXT = unicode  # noqa: F821
+except NameError:
+    _TEXT = str
+
+
+def _dec(b):
+    """bytes -> 文本。解码顺序：UTF-8 -> 系统文件系统编码 -> GBK -> latin-1。"""
+    if isinstance(b, _TEXT):
+        return b
+    if not isinstance(b, (bytes, bytearray)):
+        return "%s" % (b,)
+    try:
+        return bytes(b).decode("utf-8")
+    except Exception:
+        pass
+    for enc in (sys.getfilesystemencoding(), "gbk", "latin-1"):
+        if not enc:
+            continue
+        try:
+            return bytes(b).decode(enc)
+        except Exception:
+            continue
+    return bytes(b).decode("utf-8", "replace")
+
+
+def _to_text(obj):
+    """递归净化待 JSON 序列化的对象：dict/list 递归，bytes 解码为文本，
+    其余不可序列化的对象转 str，保证 dumps 不会因为厂商 API 返回
+    bytes / 异类对象而 TypeError 崩溃。"""
+    if isinstance(obj, dict):
+        return dict((_to_text(k), _to_text(v)) for k, v in obj.items())
+    if isinstance(obj, (list, tuple)):
+        return [_to_text(v) for v in obj]
+    if isinstance(obj, (bytes, bytearray)):
+        return _dec(obj)
+    if obj is None or isinstance(obj, (_TEXT, bool, int, float)):
+        return obj
+    try:
+        json.dumps(obj)
+        return obj
+    except Exception:
+        return "%s" % (obj,)
+
+
 def emit(obj, exit_code=0):
-    sys.stdout.write(json.dumps(obj, ensure_ascii=False) + "\n")
+    sys.stdout.write(json.dumps(_to_text(obj), ensure_ascii=False) + "\n")
     sys.stdout.flush()
     return exit_code
 

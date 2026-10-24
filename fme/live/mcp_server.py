@@ -30,6 +30,7 @@ _token 且一致，否则以 BAD_TOKEN 拒绝。未配置 token 时按 stdio 本
 每次运行都会追加一条记录到 ~/.fme-agent-bridge/runs.jsonl（运行日志）。
 日志写 stderr，stdout 只走 MCP 协议。
 """
+import io
 import json
 import os
 import sys
@@ -47,6 +48,69 @@ sys.path.insert(0, os.path.normpath(SCRIPTS_DIR))
 
 def log(*a):
     print("[fme-mcp]", *a, file=sys.stderr, flush=True)
+
+# ---- 序列化净化（与 arcmap 已修版同口径） ----
+try:
+    _TEXT = unicode  # noqa: F821
+except NameError:
+    _TEXT = str
+
+
+def _dec(b):
+    """bytes -> 文本。解码顺序：UTF-8 -> 系统文件系统编码 -> GBK -> latin-1。"""
+    if isinstance(b, _TEXT):
+        return b
+    if not isinstance(b, (bytes, bytearray)):
+        return "%s" % (b,)
+    try:
+        return bytes(b).decode("utf-8")
+    except Exception:
+        pass
+    for enc in (sys.getfilesystemencoding(), "gbk", "latin-1"):
+        if not enc:
+            continue
+        try:
+            return bytes(b).decode(enc)
+        except Exception:
+            continue
+    return bytes(b).decode("utf-8", "replace")
+
+
+def _to_text(obj):
+    """递归净化待 JSON 序列化的对象：dict/list 递归，bytes 解码为文本，
+    其余不可序列化的对象转 str，保证 dumps 不会因为厂商 API 返回
+    bytes / 异类对象而 TypeError 崩溃。"""
+    if isinstance(obj, dict):
+        return dict((_to_text(k), _to_text(v)) for k, v in obj.items())
+    if isinstance(obj, (list, tuple)):
+        return [_to_text(v) for v in obj]
+    if isinstance(obj, (bytes, bytearray)):
+        return _dec(obj)
+    if obj is None or isinstance(obj, (_TEXT, bool, int, float)):
+        return obj
+    try:
+        json.dumps(obj)
+        return obj
+    except Exception:
+        return "%s" % (obj,)
+
+
+
+def _lock_stdio_utf8():
+    """把 stdin/stdout 锁定为 UTF-8：中文 Windows 的管道默认 GBK 编码会把
+    MCP 协议里的中文写成 GBK 字节，客户端按 UTF-8 解码直接失败。
+    只在 main() 里调用一次；已是 UTF-8 或无 buffer 时跳过，避免重复包装。"""
+    for _name in ("stdout", "stdin"):
+        _stream = getattr(sys, _name, None)
+        _buf = getattr(_stream, "buffer", None)
+        if _buf is None or getattr(_stream, "encoding", None) == "utf-8":
+            continue
+        try:
+            setattr(sys, _name, io.TextIOWrapper(_buf, encoding="utf-8",
+                                                 errors="replace"))
+        except Exception:
+            pass
+
 
 
 def expected_token():
@@ -345,7 +409,7 @@ def handle(msg):
                 "isError": True}}
         try:
             result = handler(args)
-            text = json.dumps(result, ensure_ascii=False, indent=2)
+            text = json.dumps(_to_text(result), ensure_ascii=False, indent=2)
             return {"jsonrpc": "2.0", "id": mid, "result": {
                 "content": [{"type": "text", "text": text}], "isError": False}}
         except Exception as e:
@@ -357,6 +421,7 @@ def handle(msg):
 
 
 def main():
+    _lock_stdio_utf8()
     log("starting; journal=%s token_guard=%s" % (
         JOURNAL_FILE, "on" if expected_token() else "off"))
     for line in sys.stdin:
@@ -370,7 +435,7 @@ def main():
             continue
         resp = handle(msg)
         if resp is not None:
-            sys.stdout.write(json.dumps(resp, ensure_ascii=False) + "\n")
+            sys.stdout.write(json.dumps(_to_text(resp), ensure_ascii=False) + "\n")
             sys.stdout.flush()
 
 

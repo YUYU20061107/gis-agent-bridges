@@ -56,6 +56,52 @@ _state = {"project": None, "mode": None, "attempts": []}
 _mp_cache = {"module": None, "error": None, "tried": False}
 
 
+# ---- 序列化净化（与 arcmap 已修版同口径） ----
+try:
+    _TEXT = unicode  # noqa: F821
+except NameError:
+    _TEXT = str
+
+
+def _dec(b):
+    """bytes -> 文本。解码顺序：UTF-8 -> 系统文件系统编码 -> GBK -> latin-1。"""
+    if isinstance(b, _TEXT):
+        return b
+    if not isinstance(b, (bytes, bytearray)):
+        return "%s" % (b,)
+    try:
+        return bytes(b).decode("utf-8")
+    except Exception:
+        pass
+    for enc in (sys.getfilesystemencoding(), "gbk", "latin-1"):
+        if not enc:
+            continue
+        try:
+            return bytes(b).decode(enc)
+        except Exception:
+            continue
+    return bytes(b).decode("utf-8", "replace")
+
+
+def _to_text(obj):
+    """递归净化待 JSON 序列化的对象：dict/list 递归，bytes 解码为文本，
+    其余不可序列化的对象转 str，保证 dumps 不会因为厂商 API 返回
+    bytes / 异类对象而 TypeError 崩溃。"""
+    if isinstance(obj, dict):
+        return dict((_to_text(k), _to_text(v)) for k, v in obj.items())
+    if isinstance(obj, (list, tuple)):
+        return [_to_text(v) for v in obj]
+    if isinstance(obj, (bytes, bytearray)):
+        return _dec(obj)
+    if obj is None or isinstance(obj, (_TEXT, bool, int, float)):
+        return obj
+    try:
+        json.dumps(obj)
+        return obj
+    except Exception:
+        return "%s" % (obj,)
+
+
 def _get_mp():
     """懒导入 arcpy.mp（外部无 arcpy 环境时返回 (None, 错误文本)，不崩溃）。"""
     if not _mp_cache["tried"]:
@@ -693,7 +739,13 @@ def serve():
                 resp = {"ok": False, "error": "BAD_JSON: %s" % e}
             else:
                 resp = handle_request(req)
-            conn.sendall((json.dumps(resp, ensure_ascii=False) + "\n").encode("utf-8"))
+            try:
+                conn.sendall((json.dumps(_to_text(resp), ensure_ascii=False) + "\n").encode("utf-8"))
+            except Exception:
+                try:
+                    conn.sendall(b'{"ok": false, "error": "RESPONSE_ENCODE_FAILED"}\n')
+                except Exception:
+                    pass
 
 
 def start(blocking=True):
