@@ -68,6 +68,31 @@ whenToUse: 盘点或备份 SuperMap 工程、对 iDesktopX 当前工作空间做
 输出本机 iobjectspy 的 Workspace/Datasource/Map 实际方法清单，供维护者据此收紧桥接脚本。
 探针结果必须完整回传给用户/维护者，不得据此自行扩展动作。
 
+## 工程文件生产与三维场景（v0.4 新增）
+
+做「把原始数据生产成可交付的工作空间 + 数据源」类任务（配准成果、轨迹点线、
+三维球面场景等）前，先读包内两份实战文档：
+
+- `ENGINEERING-PLAYBOOK.md`：工程文件生产手册（单 Workspace 纪律、复制优先、
+  CRS、地图副本与 `set_map` 回写、字段保留字、交付校验清单、症状速查）。
+- `SCENE-AND-GUI.md`：三维场景与 GUI 保存（无头能力边界、场景 XML 结构、
+  相机换算、iDesktop 两步保存）。
+
+配套脚本（均在 `scripts/`，输出单行 JSON 纪律同上）：
+
+- `make_scene_xml.py`：由命令行参数或 JSON 规格（`--spec`）生成场景 XML，
+  模板取 `templates/scene_globe_template.xml`（来源与许可见 `templates/NOTICE.md`）；
+  只写 XML 文件，不改工作空间。
+- `add_scene_xml.py`：把场景 XML 注入**工作空间副本**（写操作：必须 `--confirm`，
+  默认先备份，同名场景默认拒绝、`--replace` 才覆盖）。
+- `verify_workspace.py`：工作空间盘点/迁移验收（只读）：数据源、数据集、记录数、
+  EPSG、地图层数与范围、场景与图层、关键字段空值；`--copy-to` 可先复制到新目录
+  再重开验收。
+
+另：`live/selftest.py` 支持用环境变量 `SM_BRIDGE_TOKEN_FILE` 指定 token 文件
+位置（默认仍为用户目录下的 `.supermap-live-bridge.token`）；当默认位置不可写
+（如受控文件夹访问）时，把 token 放到工作区目录并设置该变量即可自检。
+
 ## 安全纪律（硬规则，违反即停）
 
 1. **原件只读**：禁止对用户指定的原始工作空间执行任何 save / 写入 / 删除动作。

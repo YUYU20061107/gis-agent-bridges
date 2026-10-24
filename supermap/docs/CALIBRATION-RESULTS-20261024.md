@@ -124,3 +124,33 @@
   需结束桥进程再重新调用，才能看到新内容。
 - 校准包不含 Python 运行时、iobjectspy 组件与任何工作空间数据（体积/许可原因），
   按第 6 节自行搭建。
+
+## 8. v0.4 工程文件生产增补（2026-10-24）
+
+在第 1 轮校准基线上增补工程文件生产资产（桥的对外动作不变）：
+
+- `ENGINEERING-PLAYBOOK.md`：工程文件生产手册（进程与单 Workspace 纪律、复制优先、
+  CRS、地图副本与 set_map 回写、字段保留字、轨迹点线、交付校验清单、症状速查）。
+- `SCENE-AND-GUI.md`：三维场景与 GUI 保存（无头能力边界、场景 XML 结构、
+  ECEF→SuperMap 相机换算、GUI 两步保存、排错）。
+- `templates/scene_globe_template.xml` + `templates/NOTICE.md`：三维球面场景 XML
+  模板（来源与许可说明见 NOTICE）。
+- `scripts/make_scene_xml.py`：由命令行参数或 JSON 规格生成场景 XML
+  （纯标准库，不改工作空间）。
+- `scripts/add_scene_xml.py`：把场景 XML 注入工作空间副本
+  （`--confirm` 闸、默认备份、同名默认拒绝）。
+- `scripts/verify_workspace.py`：工作空间盘点/换目录迁移验收（只读）。
+- `live/selftest.py`：支持 `SM_BRIDGE_TOKEN_FILE` 环境变量指定 token 文件位置
+  （应对受控文件夹访问等导致默认用户目录不可写的环境）。
+
+验证分工（如实标注）：
+
+- **工程方自报**（本机 iDesktop 10i 实机）：副本注入场景 before=1 → after=2、
+  备份文件生成、重开可见；`verify_workspace.py` 对含场景副本输出 issues 为空、
+  CRS 显示 GCS_WGS_1984 (4326)；对 Result 做 `--copy-to` 迁移验收：5 个数据集、
+  地图 5 层、范围 118.8925–118.9144, 32.0976–32.1222；`SM_BRIDGE_TOKEN_FILE`
+  指向工作区时 selftest 6/6 PASS。
+- **文件级/VM 复核**（Muse 侧）：新增与修改的全部 Python 文件 py_compile 通过；
+  `make_scene_xml.py` 以样例规格生成场景 XML 成功（图层替换与相机四元数输出
+  正常）；`live/selftest.py` 在 VM 复跑 6/6 PASS。实机行为以工程方自报为准，
+  未在 Muse 侧实机复跑。

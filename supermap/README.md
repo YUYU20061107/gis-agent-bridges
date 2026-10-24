@@ -127,6 +127,15 @@ Blender MCP 式接入：桥脚本跑在 **iDesktopX 进程内的 Python 窗口**
 
 `preflight`（只读）、`backup`（只读原件，生成副本）、`inspect`（只读，
 操作的是临时副本）。无头桥不包含任何写业务动作。
+### 工程生产脚本（v0.4 新增）
+
+配合 `ENGINEERING-PLAYBOOK.md`（工程文件生产手册）与 `SCENE-AND-GUI.md`
+（三维场景与 GUI 保存）：`scripts/make_scene_xml.py` 由参数或 JSON 规格生成
+三维场景 XML（模板在 `templates/`，来源与许可见 `templates/NOTICE.md`）；
+`scripts/add_scene_xml.py` 把场景 XML 注入工作空间副本（confirm 闸、默认备份、
+同名默认拒绝）；`scripts/verify_workspace.py` 做工作空间盘点与换目录迁移验收
+（只读）。三件脚本均来自 iDesktop 10i 实机实战沉淀，桥的对外动作不变。
+
 
 ## 安全模型
 
@@ -157,6 +166,12 @@ Blender MCP 式接入：桥脚本跑在 **iDesktopX 进程内的 Python 窗口**
   （先 discover 钉死实时接入策略，操作类工具只在工作空间副本上验证）。
 - iobjectspy 不同小版本的 API 命名有差异，桥接脚本会把命中的策略记进输出
   （`opened_via` / `api_path` / `via`），校准后请据实收紧并注明实机版本。
+- v0.4 工程文件生产增补（2026-10-24）：新增工程文件生产手册、三维场景文档与
+  场景模板、三件生产/验收脚本（生成场景 XML、注入场景、工作空间验收），
+  `live/selftest.py` 支持 `SM_BRIDGE_TOKEN_FILE`；来自同一 iDesktop 10i 环境的
+  实战沉淀，验证记录见
+  [docs/CALIBRATION-RESULTS-20261024.md](docs/CALIBRATION-RESULTS-20261024.md) 的第 8 节。
+
 
 ## 环境要求
 
@@ -174,12 +189,20 @@ supermap-gis-bridge/
 ├── README.md               本文件
 ├── SKILL.md                无头桥操作手册（环境发现、命令、安全纪律、报错对照、回报格式）
 ├── ROADMAP.md              版本演进、待实机校准清单、后续候选路线评估
+├── ENGINEERING-PLAYBOOK.md 工程文件生产手册（v0.4）
+├── SCENE-AND-GUI.md        三维场景与 GUI 两步保存（v0.4）
+├── templates/
+│   ├── scene_globe_template.xml 三维球面场景 XML 模板
+│   └── NOTICE.md              模板来源与许可说明（不在 MIT 覆盖内）
 ├── docs/
 │   ├── CALIBRATION.md      实机校准指南（顺序、验收标准、回报格式、红线）
 │   └── CALIBRATION-RESULTS-20261024.md  iDesktop 10i 实机校准结果（环境、13/13 清单、API 事实）
 ├── scripts/
 │   ├── supermap_bridge.py  无头桥脚本（preflight / backup / inspect，单行 JSON 输出）
-│   └── probe_api.py        校准探针，输出本机 iobjectspy 的真实方法清单
+│   ├── probe_api.py        校准探针，输出本机 iobjectspy 的真实方法清单
+│   ├── make_scene_xml.py   由参数/JSON 规格生成三维场景 XML（只写 XML）
+│   ├── add_scene_xml.py    把场景 XML 注入工作空间副本（confirm 闸、默认备份）
+│   └── verify_workspace.py 工作空间盘点/迁移验收（只读）
 └── live/
     ├── inapp_bridge.py     iDesktopX 应用内桥（localhost 服务，单文件可 exec）
     ├── mcp_server.py       MCP 服务端（stdio 转发，纯标准库）

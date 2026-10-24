@@ -26,7 +26,8 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 BRIDGE_PY = os.path.join(HERE, "inapp_bridge.py")
 MCP_PY = os.path.join(HERE, "mcp_server.py")
 HOST, PORT = "127.0.0.1", 47615
-TOKEN_FILE = os.path.join(os.path.expanduser("~"), ".supermap-live-bridge.token")
+TOKEN_FILE = os.environ.get("SM_BRIDGE_TOKEN_FILE") or os.path.join(
+    os.path.expanduser("~"), ".supermap-live-bridge.token")
 
 EXPECTED_TOOLS = {
     "supermap_ping", "supermap_discover", "supermap_workspace_info",

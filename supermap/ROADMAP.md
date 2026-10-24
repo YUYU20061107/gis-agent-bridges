@@ -7,6 +7,7 @@
 | v0.1 | 无头桥三件只读动作：preflight（环境/许可预检）、backup（时间戳备份+sha256）、inspect（复制到临时目录后盘点）；校准探针 probe_api.py | VM 侧已验证语法、backup 真复制+sha256、无组件环境报错 JSON 与退出码；iobjectspy 路径未实机验证 |
 | v0.2 | 实时桥（Blender MCP 模式）：inapp_bridge.py 跑在 iDesktopX Python 窗口内（127.0.0.1:47615 + token 鉴权 + 工作空间多策略发现），mcp_server.py 纯标准库 stdio 转发；7 个只读/保存工具 | VM 侧端到端协议自检通过（initialize/tools/list/ping/discover/保存闸门/token）；与 iDesktopX 本体对接未实机验证 |
 | v0.3 | 实时桥补 6 个工具：list_layers（只读支撑）＋ add_dataset_to_map、make_label_thematic（写类、confirm 闸）＋ set_layer_visible、zoom_to_dataset（视图级）＋ export_map_image；枚举共享逻辑收拢为 ENUM-SHARED 块（两侧逐字一致）；新增一键自检 live/selftest.py | VM 侧 selftest 6/6 PASS；**操作类工具全部未实机验证**，按 docs/CALIBRATION.md 在实机逐项校准 |
+| v0.4 | 工程文件生产增补：`ENGINEERING-PLAYBOOK.md`、`SCENE-AND-GUI.md`、`templates/` 场景模板（附 NOTICE）、`scripts/` 三件（make_scene_xml / add_scene_xml / verify_workspace）；`live/selftest.py` 支持 `SM_BRIDGE_TOKEN_FILE` | 本机 iDesktop 10i 实战沉淀（工程方自报，验证记录见 `docs/CALIBRATION-RESULTS-20261024.md` 第 8 节）；不改桥的对外动作 |
 
 ## 待实机校准清单（按依赖顺序）
 
