@@ -1,0 +1,13 @@
+{
+  "mcpServers": {
+    "mapgis-probe-bridge": {
+      "command": "python",
+      "args": [
+        "<ABSOLUTE_PATH_TO_PACKAGE>/mapgis/live/mcp_server.py"
+      ],
+      "env": {
+        "MAPGIS_BRIDGE_TOKEN_FILE": "<TOKEN_FILE_DIR>/.mapgis-bridge.token"
+      }
+    }
+  }
+}

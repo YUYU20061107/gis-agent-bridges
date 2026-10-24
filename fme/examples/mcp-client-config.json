@@ -1,0 +1,10 @@
+{
+  "mcpServers": {
+    "fme-headless-runner": {
+      "command": "python",
+      "args": [
+        "<ABSOLUTE_PATH_TO_PACKAGE>/fme/live/mcp_server.py"
+      ]
+    }
+  }
+}

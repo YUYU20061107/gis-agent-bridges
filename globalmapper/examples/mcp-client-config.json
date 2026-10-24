@@ -1,0 +1,10 @@
+{
+  "mcpServers": {
+    "globalmapper-bridge": {
+      "command": "python",
+      "args": [
+        "<ABSOLUTE_PATH_TO_PACKAGE>/globalmapper/live/mcp_server.py"
+      ]
+    }
+  }
+}

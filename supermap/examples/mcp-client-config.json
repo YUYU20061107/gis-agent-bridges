@@ -1,0 +1,13 @@
+{
+  "mcpServers": {
+    "supermap-live-bridge": {
+      "command": "python",
+      "args": [
+        "<ABSOLUTE_PATH_TO_PACKAGE>/supermap/live/mcp_server.py"
+      ],
+      "env": {
+        "SM_BRIDGE_TOKEN_FILE": "<TOKEN_FILE_DIR>/.supermap-live-bridge.token"
+      }
+    }
+  }
+}

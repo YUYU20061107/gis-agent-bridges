@@ -1,0 +1,10 @@
+{
+  "mcpServers": {
+    "envi-headless-bridge": {
+      "command": "python",
+      "args": [
+        "<ABSOLUTE_PATH_TO_PACKAGE>/envi/live/mcp_server.py"
+      ]
+    }
+  }
+}

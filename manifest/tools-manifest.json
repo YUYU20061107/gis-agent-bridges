@@ -1,0 +1,598 @@
+{
+  "generated_by": "manifest/build_manifest.py",
+  "method": "live probe: launch each live/mcp_server.py, MCP initialize + tools/list",
+  "scope_note": "Offline protocol self-check only: proves each stdio MCP server starts and lists its tools. It is NOT evidence of calibration against real GIS software; see root README and each package docs/CALIBRATION.md.",
+  "packages": [
+    {
+      "package": "supermap",
+      "server_name": "supermap-live-bridge",
+      "server_version": "0.3.0",
+      "port": 47615,
+      "tool_count": 13,
+      "tools": [
+        {
+          "name": "supermap_ping",
+          "access": "read",
+          "requires_confirm": false,
+          "description": "连通性检查：桥是否在线"
+        },
+        {
+          "name": "supermap_discover",
+          "access": "read",
+          "requires_confirm": false,
+          "description": "发现 iDesktopX 当前工作空间的接入方式并回报现场 API 信息（校准用）"
+        },
+        {
+          "name": "supermap_workspace_info",
+          "access": "read",
+          "requires_confirm": false,
+          "description": "当前工作空间概览：数据源数、地图数、接入模式"
+        },
+        {
+          "name": "supermap_list_datasources",
+          "access": "read",
+          "requires_confirm": false,
+          "description": "列出当前工作空间的全部数据源（别名、引擎）"
+        },
+        {
+          "name": "supermap_list_datasets",
+          "access": "read",
+          "requires_confirm": false,
+          "description": "列出数据集；可传 datasource 只看某数据源"
+        },
+        {
+          "name": "supermap_list_maps",
+          "access": "read",
+          "requires_confirm": false,
+          "description": "列出当前工作空间的全部地图名"
+        },
+        {
+          "name": "supermap_list_layers",
+          "access": "read",
+          "requires_confirm": false,
+          "description": "列出某地图的图层（下标、名称、显隐）；map 省略时取第一幅地图"
+        },
+        {
+          "name": "supermap_add_dataset_to_map",
+          "access": "write",
+          "requires_confirm": true,
+          "description": "【写·实验性】把数据集加入地图，须 confirm=true；调不通会如实报错"
+        },
+        {
+          "name": "supermap_set_layer_visible",
+          "access": "view",
+          "requires_confirm": false,
+          "description": "【视图级·实验性】设置图层显隐，只改显示状态、可逆"
+        },
+        {
+          "name": "supermap_zoom_to_dataset",
+          "access": "view",
+          "requires_confirm": false,
+          "description": "【视图级·实验性】把地图视图缩放到数据集范围；做不到会报 NOT_SUPPORTED"
+        },
+        {
+          "name": "supermap_make_label_thematic",
+          "access": "write",
+          "requires_confirm": true,
+          "description": "【写·实验性】按字段做标签专题图（如 NAME），须 confirm=true"
+        },
+        {
+          "name": "supermap_export_map_image",
+          "access": "write",
+          "requires_confirm": false,
+          "description": "【实验性】把地图导出为 PNG 到指定路径，以文件真实落盘为准",
+          "note": "file-output: creates a new file at a caller-specified path; no confirm gate by design"
+        },
+        {
+          "name": "supermap_save_workspace",
+          "access": "write",
+          "requires_confirm": true,
+          "description": "保存当前工作空间（写操作，必须 confirm=true）"
+        }
+      ]
+    },
+    {
+      "package": "arcgis-pro",
+      "server_name": "arcgis-pro-live-bridge",
+      "server_version": "0.2.0",
+      "port": 47616,
+      "tool_count": 13,
+      "tools": [
+        {
+          "name": "arcgis_ping",
+          "access": "read",
+          "requires_confirm": false,
+          "description": "连通性检查：桥是否在线"
+        },
+        {
+          "name": "arcgis_discover",
+          "access": "read",
+          "requires_confirm": false,
+          "description": "发现 ArcGIS Pro 当前工程的接入方式并回报现场 API 信息（校准用）"
+        },
+        {
+          "name": "arcgis_project_info",
+          "access": "read",
+          "requires_confirm": false,
+          "description": "当前工程概览：文件路径、默认地理数据库、地图数/布局数、接入模式"
+        },
+        {
+          "name": "arcgis_list_maps",
+          "access": "read",
+          "requires_confirm": false,
+          "description": "列出当前工程的全部地图（名称、类型）"
+        },
+        {
+          "name": "arcgis_list_layers",
+          "access": "read",
+          "requires_confirm": false,
+          "description": "列出某地图的图层（下标、名称、显隐、数据源、是否断裂）；map 省略时取第一幅地图"
+        },
+        {
+          "name": "arcgis_list_tables",
+          "access": "read",
+          "requires_confirm": false,
+          "description": "列出某地图的独立表（名称、数据源、是否断裂）；map 省略时取第一幅地图"
+        },
+        {
+          "name": "arcgis_list_layouts",
+          "access": "read",
+          "requires_confirm": false,
+          "description": "列出当前工程的全部布局（名称、页面宽高、地图框数）"
+        },
+        {
+          "name": "arcgis_set_layer_visible",
+          "access": "view",
+          "requires_confirm": false,
+          "description": "【视图级·实验性】设置图层显隐，只改显示状态、可逆"
+        },
+        {
+          "name": "arcgis_zoom_to_layer",
+          "access": "view",
+          "requires_confirm": false,
+          "description": "【视图级·实验性】把活动视图缩放到图层范围；做不到会报 NOT_SUPPORTED"
+        },
+        {
+          "name": "arcgis_set_labels_visible",
+          "access": "view",
+          "requires_confirm": false,
+          "description": "【视图级·实验性】开关图层标注显示，只改显示状态、可逆"
+        },
+        {
+          "name": "arcgis_add_layer_from_path",
+          "access": "write",
+          "requires_confirm": true,
+          "description": "【写·实验性】把数据路径（要素类/shp/栅格等）加入地图，须 confirm=true；调不通会如实报错"
+        },
+        {
+          "name": "arcgis_export_map_image",
+          "access": "write",
+          "requires_confirm": false,
+          "description": "【实验性】把布局（或其地图框）导出为 PNG 到指定路径，以文件真实落盘为准",
+          "note": "file-output: creates a new file at a caller-specified path; no confirm gate by design"
+        },
+        {
+          "name": "arcgis_save_project",
+          "access": "write",
+          "requires_confirm": true,
+          "description": "保存当前工程（写操作，必须 confirm=true）"
+        }
+      ]
+    },
+    {
+      "package": "arcmap",
+      "server_name": "arcmap-live-bridge",
+      "server_version": "0.3.0",
+      "port": 47617,
+      "tool_count": 10,
+      "tools": [
+        {
+          "name": "arcmap_ping",
+          "access": "read",
+          "requires_confirm": false,
+          "description": "连通性检查：桥是否在线"
+        },
+        {
+          "name": "arcmap_discover",
+          "access": "read",
+          "requires_confirm": false,
+          "description": "发现 ArcMap 当前地图文档的接入方式并回报现场 API 信息（校准用）"
+        },
+        {
+          "name": "arcmap_document_info",
+          "access": "read",
+          "requires_confirm": false,
+          "description": "当前地图文档概览：路径、活动视图、页面大小、数据框/图层数、接入模式"
+        },
+        {
+          "name": "arcmap_list_dataframes",
+          "access": "read",
+          "requires_confirm": false,
+          "description": "列出全部数据框（名称、范围、比例尺、空间参考、图层数）"
+        },
+        {
+          "name": "arcmap_list_layers",
+          "access": "read",
+          "requires_confirm": false,
+          "description": "列出图层（名称、数据源、显隐、是否断裂）；可传 dataframe 只看某个数据框"
+        },
+        {
+          "name": "arcmap_list_tables",
+          "access": "read",
+          "requires_confirm": false,
+          "description": "列出文档中的独立表视图（名称、数据源）"
+        },
+        {
+          "name": "arcmap_set_layer_visible",
+          "access": "view",
+          "requires_confirm": false,
+          "description": "【视图级】设置图层显隐，只改显示状态、可逆"
+        },
+        {
+          "name": "arcmap_zoom_to_layer",
+          "access": "view",
+          "requires_confirm": false,
+          "description": "【视图级】把数据框视图缩放到图层范围并刷新活动视图"
+        },
+        {
+          "name": "arcmap_export_map_image",
+          "access": "write",
+          "requires_confirm": false,
+          "description": "把当前文档导出为 PNG 到指定路径，以文件真实落盘为准",
+          "note": "file-output: creates a new file at a caller-specified path; no confirm gate by design"
+        },
+        {
+          "name": "arcmap_save_document",
+          "access": "write",
+          "requires_confirm": true,
+          "description": "保存当前地图文档（写操作，必须 confirm=true）"
+        }
+      ]
+    },
+    {
+      "package": "qgis",
+      "server_name": "qgis-live-bridge",
+      "server_version": "0.2.0",
+      "port": 47618,
+      "tool_count": 12,
+      "tools": [
+        {
+          "name": "qgis_ping",
+          "access": "read",
+          "requires_confirm": false,
+          "description": "连通性检查：桥是否在线"
+        },
+        {
+          "name": "qgis_discover",
+          "access": "read",
+          "requires_confirm": false,
+          "description": "发现 QGIS 当前工程的接入方式并回报现场 API 信息（校准用）"
+        },
+        {
+          "name": "qgis_project_info",
+          "access": "read",
+          "requires_confirm": false,
+          "description": "当前工程概览：标题、文件路径、工程 CRS、图层数、接入模式"
+        },
+        {
+          "name": "qgis_list_layers",
+          "access": "read",
+          "requires_confirm": false,
+          "description": "列出当前工程的图层（名称、数据源、CRS、显隐；实时模式经图层树）"
+        },
+        {
+          "name": "qgis_list_layouts",
+          "access": "read",
+          "requires_confirm": false,
+          "description": "列出当前工程的打印布局名"
+        },
+        {
+          "name": "qgis_list_fields",
+          "access": "read",
+          "requires_confirm": false,
+          "description": "列出某矢量图层的字段（名称、类型、长度）"
+        },
+        {
+          "name": "qgis_set_layer_visible",
+          "access": "view",
+          "requires_confirm": false,
+          "description": "【视图级·实验性】设置图层显隐，只改显示状态、可逆"
+        },
+        {
+          "name": "qgis_zoom_to_layer",
+          "access": "view",
+          "requires_confirm": false,
+          "description": "【视图级·实验性】把画布缩放到图层范围；无画布时报 NOT_SUPPORTED 并附范围"
+        },
+        {
+          "name": "qgis_add_layer_from_path",
+          "access": "write",
+          "requires_confirm": true,
+          "description": "【写·实验性】按文件路径加载图层并加入当前工程，须 confirm=true"
+        },
+        {
+          "name": "qgis_run_processing",
+          "access": "write",
+          "requires_confirm": true,
+          "description": "【执行·实验性】运行一个 Processing 算法，须 confirm=true；只接受算法 id + 参数，不提供任意代码执行"
+        },
+        {
+          "name": "qgis_export_map_image",
+          "access": "write",
+          "requires_confirm": false,
+          "description": "【实验性】导出地图/布局为图片到指定路径，以文件真实落盘且字节>0 为准",
+          "note": "file-output: creates a new file at a caller-specified path; no confirm gate by design"
+        },
+        {
+          "name": "qgis_save_project",
+          "access": "write",
+          "requires_confirm": true,
+          "description": "保存当前工程（写操作，必须 confirm=true）；给 path 则另存为"
+        }
+      ]
+    },
+    {
+      "package": "geoscene",
+      "server_name": "geoscene-live-bridge",
+      "server_version": "0.2.0",
+      "port": 47619,
+      "tool_count": 13,
+      "tools": [
+        {
+          "name": "geoscene_ping",
+          "access": "read",
+          "requires_confirm": false,
+          "description": "连通性检查：桥是否在线"
+        },
+        {
+          "name": "geoscene_discover",
+          "access": "read",
+          "requires_confirm": false,
+          "description": "发现 GeoScene Pro 当前工程的接入方式并回报现场 API 信息（含产品身份字段，校准/兼容性核验用）"
+        },
+        {
+          "name": "geoscene_project_info",
+          "access": "read",
+          "requires_confirm": false,
+          "description": "当前工程概览：文件路径、默认地理数据库、地图数/布局数、接入模式"
+        },
+        {
+          "name": "geoscene_list_maps",
+          "access": "read",
+          "requires_confirm": false,
+          "description": "列出当前工程的全部地图（名称、类型）"
+        },
+        {
+          "name": "geoscene_list_layers",
+          "access": "read",
+          "requires_confirm": false,
+          "description": "列出某地图的图层（下标、名称、显隐、数据源、是否断裂）；map 省略时取第一幅地图"
+        },
+        {
+          "name": "geoscene_list_tables",
+          "access": "read",
+          "requires_confirm": false,
+          "description": "列出某地图的独立表（名称、数据源、是否断裂）；map 省略时取第一幅地图"
+        },
+        {
+          "name": "geoscene_list_layouts",
+          "access": "read",
+          "requires_confirm": false,
+          "description": "列出当前工程的全部布局（名称、页面宽高、地图框数）"
+        },
+        {
+          "name": "geoscene_set_layer_visible",
+          "access": "view",
+          "requires_confirm": false,
+          "description": "【视图级·实验性】设置图层显隐，只改显示状态、可逆"
+        },
+        {
+          "name": "geoscene_zoom_to_layer",
+          "access": "view",
+          "requires_confirm": false,
+          "description": "【视图级·实验性】把活动视图缩放到图层范围；做不到会报 NOT_SUPPORTED"
+        },
+        {
+          "name": "geoscene_set_labels_visible",
+          "access": "view",
+          "requires_confirm": false,
+          "description": "【视图级·实验性】开关图层标注显示，只改显示状态、可逆"
+        },
+        {
+          "name": "geoscene_add_layer_from_path",
+          "access": "write",
+          "requires_confirm": true,
+          "description": "【写·实验性】把数据路径（要素类/shp/栅格等）加入地图，须 confirm=true；调不通会如实报错"
+        },
+        {
+          "name": "geoscene_export_map_image",
+          "access": "write",
+          "requires_confirm": false,
+          "description": "【实验性】把布局（或其地图框）导出为 PNG 到指定路径，以文件真实落盘为准",
+          "note": "file-output: creates a new file at a caller-specified path; no confirm gate by design"
+        },
+        {
+          "name": "geoscene_save_project",
+          "access": "write",
+          "requires_confirm": true,
+          "description": "保存当前工程（写操作，必须 confirm=true）"
+        }
+      ]
+    },
+    {
+      "package": "mapgis",
+      "server_name": "mapgis-probe-bridge",
+      "server_version": "0.2.0",
+      "port": null,
+      "tool_count": 3,
+      "tools": [
+        {
+          "name": "mapgis_ping",
+          "access": "read",
+          "requires_confirm": false,
+          "description": "连通性检查：探针 MCP 服务端是否在线"
+        },
+        {
+          "name": "mapgis_discover",
+          "access": "read",
+          "requires_confirm": false,
+          "description": "探针结论摘要：本机是否存在可用的 MapGIS Python 绑定（须带 token）"
+        },
+        {
+          "name": "mapgis_probe_environment",
+          "access": "read",
+          "requires_confirm": false,
+          "description": "探针全量结果：安装目录启发式扫描、逐模块导入尝试、命中模块的符号与类方法清单（须带 token）。这是决定 MapGIS 桥接路线的立项依据。"
+        }
+      ]
+    },
+    {
+      "package": "envi",
+      "server_name": "envi-headless-bridge",
+      "server_version": "0.2.0",
+      "port": null,
+      "tool_count": 7,
+      "tools": [
+        {
+          "name": "envi_ping",
+          "access": "read",
+          "requires_confirm": false,
+          "description": "连通性检查：无头桥是否在线（顺带报 idlpy 是否可导入）"
+        },
+        {
+          "name": "envi_discover",
+          "access": "read",
+          "requires_confirm": false,
+          "description": "发现本机 ENVI/idlpy 可用性与安装线索（校准用，只读）"
+        },
+        {
+          "name": "envi_raster_info",
+          "access": "read",
+          "requires_confirm": false,
+          "description": "栅格盘点：优先纯 Python 解析 .hdr（source=hdr-parse）；传 verify=true 且 idlpy 可用时用 ENVI 打开核对（source=envi）"
+        },
+        {
+          "name": "envi_list_tasks",
+          "access": "read",
+          "requires_confirm": false,
+          "description": "列出 ENVITask 任务名抽样；无 ENVI 时结构化返回 ENVI_NOT_AVAILABLE"
+        },
+        {
+          "name": "envi_describe_task",
+          "access": "read",
+          "requires_confirm": false,
+          "description": "描述某 ENVITask 的参数 schema（构造任务对象读参数，不执行）；无 ENVI 时结构化返回"
+        },
+        {
+          "name": "envi_run_task",
+          "access": "write",
+          "requires_confirm": true,
+          "description": "【写】经 ENVITask 执行一个 ENVI 任务，须 confirm=true；无 ENVI 时返回 ENVI_NOT_AVAILABLE，绝不假装执行"
+        },
+        {
+          "name": "envi_export_raster_subset",
+          "access": "write",
+          "requires_confirm": true,
+          "description": "【写】导出栅格子集到新文件，须 confirm=true；仅 .hdr 模式下结构化报错 NOT_SUPPORTED_IN_HDR_MODE"
+        }
+      ]
+    },
+    {
+      "package": "globalmapper",
+      "server_name": "globalmapper-bridge",
+      "server_version": "0.2.0",
+      "port": null,
+      "tool_count": 7,
+      "tools": [
+        {
+          "name": "globalmapper_ping",
+          "access": "read",
+          "requires_confirm": false,
+          "description": "连通性检查：服务端在线、模块可用性与当前上下文"
+        },
+        {
+          "name": "globalmapper_discover",
+          "access": "read",
+          "requires_confirm": false,
+          "description": "发现 globalmapper 模块、版本、候选函数命中与运行上下文（校准用）"
+        },
+        {
+          "name": "globalmapper_workspace_info",
+          "access": "read",
+          "requires_confirm": false,
+          "description": "当前工作区概览：上下文、已打开工作区、图层数"
+        },
+        {
+          "name": "globalmapper_list_layers",
+          "access": "read",
+          "requires_confirm": false,
+          "description": "列图层（名称、显隐可得时）；可传 workspace 先打开某个 .gmw"
+        },
+        {
+          "name": "globalmapper_set_layer_visible",
+          "access": "view",
+          "requires_confirm": false,
+          "description": "【视图级·仅脚本上下文】设置图层显隐；无头模式返回 NOT_IN_MAIN_VIEW_CONTEXT"
+        },
+        {
+          "name": "globalmapper_zoom_to_layer",
+          "access": "view",
+          "requires_confirm": false,
+          "description": "【视图级·仅脚本上下文】主视图缩放到图层范围；无头模式返回 NOT_IN_MAIN_VIEW_CONTEXT"
+        },
+        {
+          "name": "globalmapper_export_workspace_image",
+          "access": "write",
+          "requires_confirm": false,
+          "description": "把当前已加载图层导出为栅格图片到 out_path；以文件落盘且字节>0 为准",
+          "note": "file-output: creates a new file at a caller-specified path; no confirm gate by design"
+        }
+      ]
+    },
+    {
+      "package": "fme",
+      "server_name": "fme-headless-runner",
+      "server_version": "0.2.0",
+      "port": null,
+      "tool_count": 6,
+      "tools": [
+        {
+          "name": "fme_ping",
+          "access": "read",
+          "requires_confirm": false,
+          "description": "连通性检查：runner 是否在线，并回报 fmeobjects 是否可用"
+        },
+        {
+          "name": "fme_discover",
+          "access": "read",
+          "requires_confirm": false,
+          "description": "环境发现：fmeobjects 导入尝试、FME 安装候选、运行日志位置（校准用）"
+        },
+        {
+          "name": "fme_list_workspaces",
+          "access": "read",
+          "requires_confirm": false,
+          "description": "列出目录下全部 .fmw workspace（名称、路径、大小、修改时间）"
+        },
+        {
+          "name": "fme_workspace_info",
+          "access": "read",
+          "requires_confirm": false,
+          "description": "解析一个 .fmw：源/目标数据集与 transformer 计数（文本尽力解析，可能不完整）"
+        },
+        {
+          "name": "fme_run_workspace",
+          "access": "write",
+          "requires_confirm": true,
+          "description": "【执行·须 confirm=true】以无头方式运行一个 .fmw；parameters 传 published parameters 的 JSON 对象；无 fmeobjects 时返回 FME_NOT_AVAILABLE，绝不假装成功"
+        },
+        {
+          "name": "fme_workspace_log_tail",
+          "access": "read",
+          "requires_confirm": false,
+          "description": "读某 workspace 最近运行日志的尾部（FME 日志文件或本桥运行日志）"
+        }
+      ]
+    }
+  ]
+}

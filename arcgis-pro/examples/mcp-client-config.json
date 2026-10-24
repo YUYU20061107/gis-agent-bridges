@@ -1,0 +1,13 @@
+{
+  "mcpServers": {
+    "arcgis-pro-live-bridge": {
+      "command": "python",
+      "args": [
+        "<ABSOLUTE_PATH_TO_PACKAGE>/arcgis-pro/live/mcp_server.py"
+      ],
+      "env": {
+        "ARCGIS_PRO_BRIDGE_TOKEN_FILE": "<TOKEN_FILE_DIR>/.arcgis-pro-live-bridge.token"
+      }
+    }
+  }
+}

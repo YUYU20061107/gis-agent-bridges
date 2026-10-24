@@ -64,6 +64,20 @@ MapGIS、ENVI、Global Mapper、FME 无常驻应用内桥，不占端口。
 3. 跑该包的探针 / preflight 与 `live/selftest.py`，确认协议层与本机环境无误。
 4. 按该包 `docs/CALIBRATION.md` 在真实软件上完成实机校准，通过后再正式使用。
 
+## 客户端接入示例（examples/）
+
+每个包都带一份可直接复制的接入示例，不用对着文字说明手拼配置：
+
+- `<包>/examples/mcp-client-config.json`：MCP 客户端配置片段，合并进你所用
+  客户端（Claude Desktop / Cursor / Trae 等）的 `mcpServers` 段，把占位符
+  `<ABSOLUTE_PATH_TO_PACKAGE>` 换成本包在你机器上的绝对路径即可。
+- `<包>/examples/prompts.md`：2–3 条可直接对 Agent 说的提示词示例（只读
+  盘点、导出、以及一条会触发 confirm 闸的写操作），并写明各自的预期行为。
+
+工具清单的机读版本在 `manifest/tools-manifest.json`（由
+`manifest/build_manifest.py` 从各包服务端实启探测生成，勿手改）；
+安全模型与漏洞报告方式见根目录 `SECURITY.md`。
+
 ## 状态与诚实声明
 
 各包的校准状态**以上方软件矩阵与各包 README 为准，按模式分别认定**，

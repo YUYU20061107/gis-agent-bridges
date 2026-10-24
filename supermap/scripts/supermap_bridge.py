@@ -89,6 +89,79 @@ def fail(error_code, message, **extra):
     return emit(obj, exit_code=1)
 
 
+# ---- PathGuard-lite -------------------------------------------------------
+# 路径入口校验（main() 分发前统一执行，拒绝时返回 PATH_GUARD_REJECTED）：
+#   1) 拒绝 UNC 路径（以双反斜杠或 // 开头）与含 NUL/控制字符的路径；
+#   2) 写类参数（_PG_WRITE_ATTRS）的目标路径与任一源路径
+#      （_PG_SOURCE_ATTRS 及 layers 列表项）经 realpath+abspath+normcase
+#      解析后相同则拒绝，防止把写目标指回原件。其余命令的写目标由脚本
+#      按时间戳/固定名派生、不接受调用方指定，不在本条范围。
+_PG_SOURCE_ATTRS = ("workspace", "project", "document", "raster", "target",
+                    "directory", "image", "points", "spec", "template")
+_PG_WRITE_ATTRS = ("out", "export_png")
+_PG_LIST_SOURCE_ATTRS = ("layers",)
+
+
+def _pg_resolve(p):
+    try:
+        p = _dec(p)
+    except Exception:
+        pass
+    return os.path.normcase(os.path.realpath(os.path.abspath(p)))
+
+
+def _pg_check_one(p):
+    """单个路径字符串校验，返回违规说明或 None。"""
+    if p is None:
+        return None
+    try:
+        s = _dec(p)
+    except Exception:
+        s = p
+    if not isinstance(s, _TEXT):
+        s = "%s" % (s,)
+    if s.startswith("\\\\") or s.startswith("//"):
+        return "UNC 路径不接受: %s" % s
+    for ch in s:
+        if ord(ch) < 32:
+            return "路径含控制字符: %r" % s
+    return None
+
+
+def _path_guard(args):
+    """返回违规说明或 None；违规由 main() 以 PATH_GUARD_REJECTED 结构化拒绝。"""
+    singles = []
+    for attr in _PG_SOURCE_ATTRS + _PG_WRITE_ATTRS:
+        v = getattr(args, attr, None)
+        if isinstance(v, _TEXT) or isinstance(v, bytes):
+            singles.append(v)
+    listed = []
+    for attr in _PG_LIST_SOURCE_ATTRS:
+        v = getattr(args, attr, None)
+        if isinstance(v, (list, tuple)):
+            for item in v:
+                if isinstance(item, _TEXT) or isinstance(item, bytes):
+                    listed.append(item)
+    for v in singles + listed:
+        bad = _pg_check_one(v)
+        if bad:
+            return bad
+    sources = []
+    for attr in _PG_SOURCE_ATTRS:
+        v = getattr(args, attr, None)
+        if isinstance(v, _TEXT) or isinstance(v, bytes):
+            sources.append(v)
+    sources.extend(listed)
+    for attr in _PG_WRITE_ATTRS:
+        v = getattr(args, attr, None)
+        if isinstance(v, _TEXT) or isinstance(v, bytes):
+            rv = _pg_resolve(v)
+            for s in sources:
+                if rv == _pg_resolve(s):
+                    return "写目标与源路径相同，拒绝覆盖原件: %s" % v
+    return None
+
+
 # ---------------------------------------------------------------- preflight
 def cmd_preflight(args):
     report = {"ok": True, "action": "preflight", "python": sys.version.split()[0],
@@ -429,6 +502,9 @@ def main():
     if func is None:
         p.print_help()
         return 2
+    _pg_err = _path_guard(args)
+    if _pg_err:
+        return fail("PATH_GUARD_REJECTED", _pg_err, error="PATH_GUARD_REJECTED")
     return func(args)
 
 

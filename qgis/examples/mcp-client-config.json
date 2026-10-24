@@ -1,0 +1,13 @@
+{
+  "mcpServers": {
+    "qgis-live-bridge": {
+      "command": "python",
+      "args": [
+        "<ABSOLUTE_PATH_TO_PACKAGE>/qgis/live/mcp_server.py"
+      ],
+      "env": {
+        "QGIS_BRIDGE_TOKEN_FILE": "<TOKEN_FILE_DIR>/.qgis-live-bridge.token"
+      }
+    }
+  }
+}

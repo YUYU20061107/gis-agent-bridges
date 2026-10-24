@@ -1,0 +1,13 @@
+{
+  "mcpServers": {
+    "arcmap-live-bridge": {
+      "command": "python",
+      "args": [
+        "<ABSOLUTE_PATH_TO_PACKAGE>/arcmap/live/mcp_server.py"
+      ],
+      "env": {
+        "ARCMAP_BRIDGE_TOKEN_FILE": "<TOKEN_FILE_DIR>/.arcmap-live-bridge.token"
+      }
+    }
+  }
+}

@@ -1,0 +1,13 @@
+{
+  "mcpServers": {
+    "geoscene-live-bridge": {
+      "command": "python",
+      "args": [
+        "<ABSOLUTE_PATH_TO_PACKAGE>/geoscene/live/mcp_server.py"
+      ],
+      "env": {
+        "GEOSCENE_BRIDGE_TOKEN_FILE": "<TOKEN_FILE_DIR>/.geoscene-live-bridge.token"
+      }
+    }
+  }
+}
