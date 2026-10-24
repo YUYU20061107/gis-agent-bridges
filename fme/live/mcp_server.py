@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-mcp_server.py — FME 无头 runner MCP 服务端（stdio，纯标准库，v0.1）
+mcp_server.py — FME 无头 runner MCP 服务端（stdio，纯标准库，v0.2）
 
 定位：FME 没有"当前会话"接口，本服务端不接入任何 FME GUI 会话；它只在
 本地以无头方式运行 .fmw workspace 文件——通过官方 Python API fmeobjects
@@ -112,7 +112,7 @@ def fme_available():
 # ------------------------------------------------------------------ tools
 def tool_ping(args):
     return {"ok": True, "pong": True, "bridge": "fme-headless-runner",
-            "version": "0.1.0", "mode": "headless-runner",
+            "version": "0.2.0", "mode": "headless-runner",
             "fme_available": fme_available()}
 
 
@@ -319,7 +319,7 @@ def handle(msg):
         return {"jsonrpc": "2.0", "id": mid, "result": {
             "protocolVersion": PROTOCOL_VERSION,
             "capabilities": {"tools": {}},
-            "serverInfo": {"name": "fme-headless-runner", "version": "0.1.0"}}}
+            "serverInfo": {"name": "fme-headless-runner", "version": "0.2.0"}}}
     if method in ("notifications/initialized", "notifications/cancelled"):
         return None
     if method == "ping":

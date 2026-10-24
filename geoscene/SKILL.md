@@ -35,6 +35,8 @@ Agent 能做的事被限定在可枚举、可审计的集合内。
 
 ## 动作清单（v0.1，仅此三项无头动作 + 实时桥工具）
 
+> v0.2（2026-10-24）：selftest 改后台线程 + 队列读行；token 文件可用环境变量 `GEOSCENE_BRIDGE_TOKEN_FILE` 指定；新增 `scripts/verify_project.py` 与 `ENGINEERING-PLAYBOOK.md`。工具清单、端口与 confirm 闸不变；兼容性仍未实机核验。
+
 无头动作通过桥接脚本执行，脚本输出单行 JSON，必须原样附在回报里。
 
 ### 1) preflight —— 环境与许可预检（只读，无副作用）

@@ -69,3 +69,39 @@
 - **许可问题即停**：出现许可类报错回报原文，不许尝试绕过许可。
 - **探针 JSON 不外发**：其中含本机目录结构，只回传给维护者/用户本人，
   不许贴到公开渠道。
+
+## 从 SuperMap 实机校准迁移的通用教训（2026-10-24）
+
+SuperMap 包已在 iDesktop 10i 上完成第一轮实机校准（见其
+docs/CALIBRATION-RESULTS-20261024.md）。以下通用教训迁移到本包，
+分两档如实标注。本包仍为 EXPLORATORY / UNVERIFIED，本节不改变
+这一口径，更不构成 MapGIS 已实机校准的声明。
+
+### 已落到代码 / 手册
+
+- **Windows 下 selftest 不能用 select() 等管道句柄**（WinError 10038）：
+  已落实——`live/selftest.py` 改为后台线程 + 队列逐行读取（_LineReader）。
+- **token 文件路径可经环境变量覆盖**（SuperMap 侧 SM_BRIDGE_TOKEN_FILE）：
+  已落实——`MAPGIS_BRIDGE_TOKEN_FILE`，mcp_server.py 与 selftest.py 一致。
+- **盘点/迁移必须连带复制伴生文件**（SuperMap 侧相对路径数据源
+  只复制工程会误报为空）：已落实——`scripts/verify_project.py` 的
+  文件层盘点列齐工程 + 同主名伴生文件，`--copy-to` 成套复制后对
+  副本重盘。
+- **厂商能力不可用时结构化报错、绝不裸 traceback、绝不编造**：
+  已落实——verify_project.py 缺 MapGIS 绑定时输出
+  `{"ok": false, "error": "MAPGIS_NOT_AVAILABLE", ...}` 并退出码 1，
+  同时给出纯文件层盘点（注明不构成工程内容结论）。
+- **CWD 写入审计**：已落实（审计结论）——`live/mcp_server.py` 不往
+  当前工作目录写日志/临时文件，唯一的写盘是 token 文件
+  （默认用户目录，可用 MAPGIS_BRIDGE_TOKEN_FILE 改路径）。
+
+### 仍是待 MapGIS 实机验证的假设（不得当作已证实结论）
+
+- **“打开必须接住返回值”“写操作必须回写才落盘”“旧路径假成功”**
+  （SuperMap iobjectspy 实测三条）：MapGIS 的 Python 绑定形态尚
+  未知，这三条在本包只是写后重读纪律的来源（见
+  ENGINEERING-PLAYBOOK.md 第 5 节），须等探针命中、实机打开工程
+  后逐条验证，不许预先写进任何 MapGIS API 假设。
+- **厂商库是否往 CWD 写日志/临时文件**：待实机观察。
+- **实时会话相关的一切**（当前会话接口、插件路线）：仍全部未证实，
+  见 live/LIVE.md 的待证实点清单。

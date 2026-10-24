@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-inapp_bridge.py — GeoScene Pro 应用内实时桥（v0.1，ArcGIS Pro 桥同源衍生版）
+inapp_bridge.py — GeoScene Pro 应用内实时桥（v0.2，ArcGIS Pro 桥同源衍生版）
 
 运行位置：GeoScene Pro 的 Python 窗口或 Notebook 内（不是外部命令行）。
 作用：在本机 127.0.0.1:47619 开一个行分隔 JSON 的 TCP 服务，
@@ -14,7 +14,7 @@ inapp_bridge.py — GeoScene Pro 应用内实时桥（v0.1，ArcGIS Pro 桥同�
 
 安全：
   - 只监听 127.0.0.1；每次启动生成随机 token，
-    写入 ~/.geoscene-live-bridge.token，请求必须带对 token，否则拒绝。
+    写入 ~/.geoscene-live-bridge.token（可用环境变量 GEOSCENE_BRIDGE_TOKEN_FILE 覆盖该路径），请求必须带对 token，否则拒绝。
   - 内容级写工具（add_layer_from_path / save_project）需要 args.confirm == true
     才执行；视图级操作（set_layer_visible / zoom_to_layer / set_labels_visible）
     不设闸，但只改显示状态、可逆，风险等级见 LIVE.md。
@@ -27,7 +27,7 @@ inapp_bridge.py — GeoScene Pro 应用内实时桥（v0.1，ArcGIS Pro 桥同�
      只能看到存盘状态，结果里标注 mode=file-fallback，不能假装是实时对象）
 discover 工具会把发现过程与现场类的方法清单一并回报，供维护者据实收紧策略。
 
-实验性说明（v0.1 全部工具均未在真实 GeoScene Pro 上校准；与 ArcGIS Pro 的
+实验性说明（v0.2 全部工具均未在真实 GeoScene Pro 上校准；与 ArcGIS Pro 的
 API 兼容性属同源推断，同样未经实机证实）：
   - 缩放走活动视图：aprx.activeView.camera.setExtent(extent)，
     extent 经 arcpy.Describe(layer) 取得；备用策略为 camera.extent 属性赋值。
@@ -53,7 +53,9 @@ import uuid
 
 HOST = "127.0.0.1"
 PORT = 47619
-TOKEN_FILE = os.path.join(os.path.expanduser("~"), ".geoscene-live-bridge.token")
+# token 文件位置可用 GEOSCENE_BRIDGE_TOKEN_FILE 覆盖（受限环境里 ~ 可能不可写）；MCP 侧同名变量
+TOKEN_FILE = os.environ.get("GEOSCENE_BRIDGE_TOKEN_FILE") or \
+    os.path.join(os.path.expanduser("~"), ".geoscene-live-bridge.token")
 TOKEN = uuid.uuid4().hex
 
 _state = {"project": None, "mode": None, "attempts": []}
@@ -281,7 +283,7 @@ def _layer_entry(layer, index):
 
 # ------------------------------------------------------------ 只读工具
 def tool_ping(args):
-    return {"pong": True, "bridge": "geoscene-live-bridge/0.1",
+    return {"pong": True, "bridge": "geoscene-live-bridge/0.2",
             "python": sys.version.split()[0]}
 
 

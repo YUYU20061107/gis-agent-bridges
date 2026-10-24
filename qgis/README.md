@@ -40,6 +40,12 @@ GitHub 上已经有优秀的先行项目（如 **qgis_mcp** 等），它们证�
 PyQGIS 关键类的真实方法清单与 iface / processing 可用性。
 操作手册见 `SKILL.md`，脚本在 `scripts/`。
 
+v0.2（2026-10-24）增补：新增只读盘点/迁移验收脚本 scripts/verify_project.py
+（复用 qgis_bridge.py 的纯 Python 解析，逐图层核对数据源与伴生文件，
+--copy-to 复制后对副本重开盘点）与 ENGINEERING-PLAYBOOK.md 工程手册；
+selftest 改后台线程 + 队列读行；token 文件位置可用 QGIS_BRIDGE_TOKEN_FILE
+覆盖。工具清单、端口与安全闸不变，仍未实机验证（见 docs/CALIBRATION.md）。
+
 ### 实时桥（live）
 
 Blender MCP 式接入：桥脚本跑在 **QGIS 的 Python 控制台**里，拿到当前打开的
@@ -177,10 +183,12 @@ gis-agent-bridges/qgis/
 ├── README.md               本文件
 ├── SKILL.md                无头桥操作手册（环境发现、命令、安全纪律、报错对照、回报格式）
 ├── ROADMAP.md              版本演进、待实机校准清单、后续候选
+├── ENGINEERING-PLAYBOOK.md 工程文件生产手册（副本纪律、写后重读验证、迁移验收）
 ├── docs/
 │   └── CALIBRATION.md      实机校准指南（顺序、验收标准、回报格式、红线）
 ├── scripts/
 │   ├── qgis_bridge.py      无头桥脚本（preflight / backup / inspect，单行 JSON 输出）
+│   ├── verify_project.py   只读盘点/迁移验收（纯 Python 解析，--copy-to 复制后对副本重开盘点）
 │   └── probe_api.py        校准探针，输出本机 PyQGIS 的真实方法清单
 └── live/
     ├── inapp_bridge.py     QGIS 应用内桥（localhost 服务，单文件可 exec）

@@ -5,6 +5,7 @@
 | 版本 | 内容 | 状态 |
 |---|---|---|
 | v0.1 | 无头桥三件只读动作：preflight（模块/版本/候选命中预检）、backup（时间戳备份+sha256+引用文件提示）、inspect（模块打开临时副本盘点；模块不可用退化为 .gmw 文本部分解析）；校准探针 probe_api.py；MCP 服务端 7 工具（进程内直调模块，无常驻应用内桥；视图工具带上下文闸） | VM 侧已验证：脚本编译、selftest 5/5 PASS、backup 真复制+sha256、模块缺失环境报错 JSON 与退出码、inspect 退化解析链路；**与 Global Mapper 本体对接全部未实机验证** |
+| v0.2 | 自 SuperMap 实机校准迁移通用教训：selftest 改线程+队列逐行读取；新增 scripts/verify_project.py（只读盘点/迁移验收，含 --copy-to）与 ENGINEERING-PLAYBOOK.md（适配版）；CALIBRATION.md 增补迁移教训一节 | VM 侧验证（py_compile / selftest / 无模块环境结构化报错）；**仍未实机验证**，工具清单（7 个）与安全闸不变 |
 
 ## 待实机校准清单（按依赖顺序）
 

@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-inapp_bridge.py — ArcMap 应用内实时桥（v0.1，个人自用）
+inapp_bridge.py — ArcMap 应用内实时桥（v0.2，个人自用）
 
 运行位置：ArcMap 的 Python 窗口内（不是外部命令行）。
 作用：在本机 127.0.0.1:47617 开一个行分隔 JSON 的 TCP 服务，外部的 MCP
@@ -15,7 +15,8 @@ scripts/ 下的脚本都写在 Python 2.7 / 3.x 兼容子集上（无 f-string�
 
 安全：
   - 只监听 127.0.0.1；每次启动生成随机 token，写入
-    ~/.arcmap-live-bridge.token，请求必须带对 token，否则拒绝。
+    ~/.arcmap-live-bridge.token（可用环境变量 ARCMAP_BRIDGE_TOKEN_FILE
+    覆盖位置，MCP 侧同名变量须一致），请求必须带对 token，否则拒绝。
   - 唯一的写工具 save_document 需要 args.confirm == true 才执行；
     视图级操作（set_layer_visible / zoom_to_layer）只改显示状态、可逆。
 
@@ -47,7 +48,9 @@ import uuid
 
 HOST = "127.0.0.1"
 PORT = 47617
-TOKEN_FILE = os.path.join(os.path.expanduser("~"), ".arcmap-live-bridge.token")
+# token 文件位置可用 ARCMAP_BRIDGE_TOKEN_FILE 覆盖（MCP 侧同名变量须一致）
+TOKEN_FILE = os.environ.get("ARCMAP_BRIDGE_TOKEN_FILE") or \
+    os.path.join(os.path.expanduser("~"), ".arcmap-live-bridge.token")
 TOKEN = uuid.uuid4().hex
 
 _state = {"mxd": None, "mode": None, "attempts": []}
@@ -230,7 +233,7 @@ def _refresh_view(arcpy, notes):
 
 # ------------------------------------------------------------ 只读工具
 def tool_ping(args):
-    return {"pong": True, "bridge": "arcmap-live-bridge/0.1",
+    return {"pong": True, "bridge": "arcmap-live-bridge/0.2",
             "python": sys.version.split()[0]}
 
 

@@ -82,3 +82,5 @@
 每次动作后回报：①一句话结论；②脚本 JSON 原文；③若动过文件，列出新建
 文件路径清单。探针阶段额外注明：执行机器、解释器路径与版本、MapGIS
 桌面版本（界面可见时）。没有 JSON 的回报视为未执行。
+
+v0.2（2026-10-24）：selftest 改后台线程+队列读行（弃 select，修 Windows 管道问题）；token 文件支持环境变量 MAPGIS_BRIDGE_TOKEN_FILE；新增 scripts/verify_project.py（文件层盘点 + 厂商层结构化报错 + --copy-to 迁移验收）与 ENGINEERING-PLAYBOOK.md；工具清单（3 个探针工具）、端口与 BAD_TOKEN 语义不变，仍为 EXPLORATORY / UNVERIFIED，未做实机校准。

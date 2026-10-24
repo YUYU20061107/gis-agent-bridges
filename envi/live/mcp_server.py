@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-mcp_server.py — ENVI 无头桥 MCP 服务端（stdio，纯标准库，v0.1）
+mcp_server.py — ENVI 无头桥 MCP 服务端（stdio，纯标准库，v0.2）
 
 与本系列其他桥不同：ENVI 没有官方支持的"附着到已打开 GUI 会话"的通道，
 因此本包**没有应用内桥**。本服务端直接在宿主 Python 里干活：
@@ -25,7 +25,7 @@ import sys
 
 PROTOCOL_VERSION = "2024-11-05"
 SERVER_NAME = "envi-headless-bridge"
-SERVER_VERSION = "0.1.0"
+SERVER_VERSION = "0.2.0"
 EXPECTED_TOKEN = os.environ.get("ENVI_BRIDGE_TOKEN", "").strip()
 
 ENVI_DTYPES = {

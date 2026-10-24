@@ -71,6 +71,7 @@ export_workspace_image（只读出文件）；视图级：set_layer_visible /
 zoom_to_layer。视图级工具带**上下文闸**：无头上下文下结构化返回
 `NOT_IN_MAIN_VIEW_CONTEXT`，这是预期行为，不是故障；不许用伪造环境变量
 等方式绕过闸门。详见 `live/LIVE.md`，实机校准按 `docs/CALIBRATION.md`。
+v0.2 新增只读盘点 `scripts/verify_project.py --workspace <工程.gmw>`（可加 `--copy-to <新目录>` 做迁移验收；模块缺失时结构化报错）与工程手册 `ENGINEERING-PLAYBOOK.md`，做迁移/交付验收时按手册清单执行。
 
 ## 安全纪律（硬规则，违反即停）
 

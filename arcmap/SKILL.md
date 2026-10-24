@@ -63,6 +63,13 @@ Desktop 安装目录、arcpy 是否可导入及其产品/版本。导入失败�
 `MapDocument("CURRENT")` 在当前进程是否可用。探针结果必须完整回传，
 不得据此自行扩展动作。
 
+## v0.2 增补（一句话）
+
+v0.2 新增只读盘点/迁移验收脚本 scripts/verify_project.py（盘点 .mxd 的
+数据框/图层/表视图，--copy-to 复制工程与同名 .gdb 等伴生文件后对副本
+重开盘点，问题记入 issues；无 arcpy 时结构化报错 ARCPY_NOT_AVAILABLE），
+以及 ENGINEERING-PLAYBOOK.md 工程手册；无头桥三件动作与实时桥工具清单不变。
+
 ## 实时桥（一句话）
 
 实时桥是另一条线：桥脚本在 ArcMap 的 Python 窗口里运行，MCP 工具清单与

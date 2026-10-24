@@ -75,3 +75,49 @@
 - 许可/版本报错即停，回报原始报错全文，不许换版本、换环境反复试探。
 - 不许自行扩展工具集或动作范围；发现 API 与脚本假设不符，回报现场
   方法清单，等维护者据实收紧，不要在实机临时发明新策略后当成定案。
+
+## 从 SuperMap 实机校准迁移的通用教训（2026-10-24）
+
+SuperMap 包已在 iDesktop 10i 上完成一轮实机校准（文件回退模式 13/13
+工具通过），其中一批教训是跨软件通用的。本节记录它们在本包的落地
+状态；注意：迁来的只是纪律与代码形态，**不代表本包已实机校准**，
+本包在真实 ArcMap 上的状态仍以本文件前文的校准目标为准。
+
+已落到代码/文档（v0.2）：
+
+- selftest 的管道读行：Windows 上 select() 等管道句柄会报 WinError
+  10038（SuperMap 实机钉死），live/selftest.py 已改后台线程 + 队列
+  逐行读取，与 SuperMap 同形态；arcmap 侧用属性赋值设 daemon 并用
+  queue/Queue 兼容导入，保持 Python 2.7 / 3.x 兼容子集写法。自检
+  检查项与数目不变（仍 6 项）。
+- token 文件环境变量覆盖：受限环境里用户目录可能不可写，桥、MCP
+  服务端、selftest 三处的 token 文件位置已统一支持环境变量
+  ARCMAP_BRIDGE_TOKEN_FILE 覆盖默认路径（SuperMap 侧同理用
+  SM_BRIDGE_TOKEN_FILE，且已实机验证）。
+- 只读盘点与迁移验收工具：新增 scripts/verify_project.py（只读盘点
+  数据框/图层/表视图 + 断裂与数据源缺失记入 issues，--copy-to 复制
+  工程与伴生文件后对副本重开盘点，结构化 JSON 输出），对应
+  SuperMap 的 verify_workspace.py；无 arcpy 时结构化报错
+  ARCPY_NOT_AVAILABLE 并退出码 1，不裸 traceback。
+- 工程纪律成文：新增 ENGINEERING-PLAYBOOK.md（原件只读/先备份只改
+  副本、伴生文件完整性、相对路径风险、写后重读验证、GUI 与无头
+  边界、导出注意、迁移验收、失败如实回报）。
+
+仍是待本软件实机验证的假设（不许当结论）：
+
+- 写回持久化：SuperMap 钉死的是「get_map 返回副本、必须 set_map
+  回写才落盘」；ArcMap 侧对应问题是 mxd.save() / saveACopy() 在
+  MapDocument("CURRENT") 对象上的真实持久化行为——保存后必须重开
+  副本核对改动在，未核对前不许仅凭 save 未抛异常就报成功。
+- 导出参数：SuperMap 钉死的是导出尺寸须用关键字 image_size= 传参；
+  ArcMap 侧 ExportToPNG 的参数形态（PAGE_LAYOUT 字符串 / 数据框
+  对象 / resolution 关键字哪条命中）仍是多策略假设，以文件落盘 +
+  字节数与内容核对为准。
+- 假成功路径：SuperMap 存在「API 不报错但改动不进文件」的旧专题
+  路径（导出图哈希可复现地不变）；ArcMap 侧是否存在同类路径（如
+  图层显隐只改包装对象、TOC 不刷新）未知，验收一律走「保存后重开
+  盘点 + 界面证据」，不采信单次调用的返回。
+- CWD 可写性：SuperMap 的 iobjectspy 会往当前工作目录写日志文件、
+  CWD 只读时须切换目录；本包经审计未发现桥/MCP 往 CWD 写日志或
+  临时文件的行为（日志只走 stderr/stdout，临时文件走系统临时目录），
+  arcpy 本体在实机上是否往 CWD 写文件仍待观察。

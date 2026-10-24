@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-mcp_server.py — MapGIS 探针 MCP 服务端（stdio，纯标准库，v0.1）
+mcp_server.py — MapGIS 探针 MCP 服务端（stdio，纯标准库，v0.2）
 
 重要说明：MapGIS 的"应用内当前会话接口"未经证实，本包【没有】应用内桥，
 本服务端也不连接任何 MapGIS 进程。它只把 scripts/probe_mapgis.py 的探测
@@ -11,7 +11,8 @@ mcp_server.py — MapGIS 探针 MCP 服务端（stdio，纯标准库，v0.1）
   mapgis_probe_environment  探针全量 JSON（安装目录、逐模块尝试、符号清单）
 
 鉴权约定（与本系列其他桥保持一致的 token 纪律）：服务端启动时在
-~/.mapgis-bridge.token 生成/读取本次 token；discover 与 probe_environment
+~/.mapgis-bridge.token 生成/读取本次 token（token 文件路径可用环境变量
+MAPGIS_BRIDGE_TOKEN_FILE 覆盖）；discover 与 probe_environment
 调用时必须在 arguments 里带 token 字段且与文件一致，否则返回 BAD_TOKEN。
 ping 为公开健康检查，不要求 token。等将来实时桥路线证实后，此约定平滑
 迁移到桥侧握手。
@@ -27,7 +28,8 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.join(HERE, "..", "scripts"))
 import probe_mapgis  # noqa: E402
 
-TOKEN_FILE = os.path.join(os.path.expanduser("~"), ".mapgis-bridge.token")
+TOKEN_FILE = os.environ.get("MAPGIS_BRIDGE_TOKEN_FILE") or \
+    os.path.join(os.path.expanduser("~"), ".mapgis-bridge.token")
 PROTOCOL_VERSION = "2024-11-05"
 
 
@@ -78,7 +80,7 @@ def tools_list():
 def run_tool(name, args):
     args = args or {}
     if name == "mapgis_ping":
-        return {"pong": True, "server": "mapgis-probe-bridge/0.1",
+        return {"pong": True, "server": "mapgis-probe-bridge/0.2",
                 "live_bridge": None,
                 "note": "本服务端只有探针工具，不连接任何 MapGIS 进程"}
     if args.get("token") != TOKEN:
@@ -108,7 +110,7 @@ def handle(msg):
         return {"jsonrpc": "2.0", "id": mid, "result": {
             "protocolVersion": PROTOCOL_VERSION,
             "capabilities": {"tools": {}},
-            "serverInfo": {"name": "mapgis-probe-bridge", "version": "0.1.0"}}}
+            "serverInfo": {"name": "mapgis-probe-bridge", "version": "0.2.0"}}}
     if method in ("notifications/initialized", "notifications/cancelled"):
         return None
     if method == "ping":

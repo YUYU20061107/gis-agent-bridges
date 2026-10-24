@@ -63,3 +63,37 @@
 - 许可/版本报错即停，回报原始报错全文，不许换版本、换环境反复试探。
 - 不许自行扩展工具集或动作范围；发现 API 与脚本假设不符，回报现场
   方法清单，等维护者据实收紧。
+
+## 从 SuperMap 实机校准迁移的通用教训（2026-10-24）
+
+SuperMap 包已在 iDesktop 10i 上完成一轮实机校准（结论见 SuperMap 包的
+`docs/CALIBRATION-RESULTS-20261024.md`）。其中与软件无关的通用教训已迁移
+到本包；**本包自身仍未在真实 FME 上校准**，下表如实区分“已落到代码/文档”
+与“仍是待本软件实机验证的假设”。
+
+### 已落到本包代码 / 文档
+
+| 教训（SuperMap 实测） | 本包落地形态 |
+|---|---|
+| Windows 下 `select()` 不能等子进程管道句柄（WinError 10038），须改后台线程 + 队列逐行读取 | `live/selftest.py` 已改用与 SuperMap 同款的 `_LineReader`（线程 + queue），删 `import select` |
+| 只读盘点 + 结构化报错 + issues 列表，是迁移验收的可靠形态；异常不许裸 traceback；相对路径引用须连带盘点 | 新增 `scripts/verify_project.py`：纯 Python 解析 .fmw 提取源/目标数据集并校验存在性与 .shp 伴生完整性，`--copy-to` 复制后对副本重开盘点；fmeobjects 缺失时输出 `{"ok": false, "error": "FME_NOT_AVAILABLE", ...}` 并 exit 1 |
+| “假成功”真实存在：调用不报错 ≠ 结果可用，须以落盘文件与日志为准 | 已写入 `ENGINEERING-PLAYBOOK.md` 第 4 节：运行后核查输出落盘 + log_tail 回读 + runs.jsonl 条目三者对上才许报成功 |
+| 先备份后动工程、原件只读、相对路径风险、迁移验收清单等工程纪律与具体软件无关 | 已写入 `ENGINEERING-PLAYBOOK.md`（FME 适配版）第 1/2/3/7 节 |
+| 服务器场景已有官方方案时，本包只补本地窄缝、不与官方竞争 | 手册与本指南继续明确与官方 FME Flow MCP 的互补分工（既有口径，未变） |
+
+注：SuperMap 的 token 文件环境变量（`SM_BRIDGE_TOKEN_FILE`）与本包无关；
+本包的 token 守卫仍是 `FME_BRIDGE_TOKEN` 环境变量或既有 token 文件
+（`~/.fme-agent-bridge.token`，v0.1 既有设计），本次未改动其语义。
+
+### 仍是待本软件实机验证的假设（不要当成结论）
+
+- `fmeobjects` 在目标 FME 版本下的真实导入位置与解释器，仍靠
+  `scripts/probe_api.py` 与 preflight 在实机钉死。
+- `FMEWorkspaceRunner.run / runWithParameters` 的签名、返回语义与
+  published parameters 的键名/取值类型，未有实机证据。
+- 许可检出行为（无许可 / 被 Workbench 占用时的报错原文）未验证，
+  待实机补进 SKILL.md 报错对照表。
+- FME 运行日志的真实落盘位置与命名未验证，`workspace_log_tail` 的
+  候选顺序仍是假设。
+- info / verify 的文本解析与真实 .fmw 的对账偏差（宏 / INCLUDE / 注释
+  误计）未在真实样本上测过；SuperMap 的软件专属 API 事实不类比套用。

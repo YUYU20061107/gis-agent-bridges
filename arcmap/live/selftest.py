@@ -3,7 +3,7 @@
 selftest.py — 实时桥一键自检（纯标准库 Python 3，无需 ArcMap）
 
 在本机启动 inapp_bridge.py 与 mcp_server.py 两个子进程，自动检查六项：
-  1) initialize        —— MCP 握手与 serverInfo（版本应为 0.1.x）
+  1) initialize        —— MCP 握手与 serverInfo（版本应为 0.2.x）
   2) tools/list        —— 10 个 arcmap_* 工具齐全
   3) tools/call ping   —— 经桥转发并拿到 pong
   4) tools/call discover —— 无 ArcMap 时也应结构化回报（document_found=false 即合格）
@@ -12,22 +12,30 @@ selftest.py — 实时桥一键自检（纯标准库 Python 3，无需 ArcMap）
 逐项打印 PASS/FAIL，最后一行总结果；退出码 0=全过，1=有失败。
 注意：若 47617 端口已被占用（可能已有桥在跑），自检会直接失败退出，不干扰现有桥。
 桥的 token 文件（~/.arcmap-live-bridge.token）若原先存在，自检结束会原样恢复。
+token 文件位置可用环境变量 ARCMAP_BRIDGE_TOKEN_FILE 覆盖（与桥、MCP 服务端同名变量一致）。
 说明：自检用 Python 3 启动 inapp_bridge.py 做协议冒烟；桥在真实 ArcMap
 窗口里跑的是 Python 2.7，其兼容子集写法须在实机另行确认（见 docs/CALIBRATION.md）。
 """
 import json
 import os
-import select
 import socket
 import subprocess
 import sys
+import threading
 import time
+
+try:
+    import queue
+except ImportError:  # Python 2.7 兼容写法（与本包桥侧的 2.7/3.x 兼容子集一致）
+    import Queue as queue
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 BRIDGE_PY = os.path.join(HERE, "inapp_bridge.py")
 MCP_PY = os.path.join(HERE, "mcp_server.py")
 HOST, PORT = "127.0.0.1", 47617
-TOKEN_FILE = os.path.join(os.path.expanduser("~"), ".arcmap-live-bridge.token")
+# token 文件位置可用 ARCMAP_BRIDGE_TOKEN_FILE 覆盖（桥与 MCP 服务端同名变量须一致）
+TOKEN_FILE = os.environ.get("ARCMAP_BRIDGE_TOKEN_FILE") or os.path.join(
+    os.path.expanduser("~"), ".arcmap-live-bridge.token")
 
 EXPECTED_TOOLS = {
     "arcmap_ping", "arcmap_discover", "arcmap_document_info",
@@ -53,27 +61,48 @@ def port_open():
         return False
 
 
-def read_line_timeout(stream, timeout=15):
-    fd = stream.fileno()
-    buf = b""
-    deadline = time.time() + timeout
-    while b"\n" not in buf:
-        if time.time() > deadline:
+class _LineReader:
+    """逐行读取子进程 stdout。
+
+    Windows 上 select() 只接受 socket，管道句柄会报 WinError 10038，
+    因此改用后台线程 + 队列，跨平台行为一致（SuperMap 包实机校准结论）。
+    线程 daemon 用属性赋值而非构造参数，保持 Python 2.7 / 3.x 兼容。
+    """
+
+    def __init__(self, stream):
+        self._q = queue.Queue()
+        t = threading.Thread(target=self._pump, args=(stream,))
+        t.daemon = True
+        t.start()
+
+    def _pump(self, stream):
+        try:
+            while True:
+                line = stream.readline()
+                if not line:
+                    self._q.put(None)
+                    return
+                self._q.put(line)
+        except Exception as e:  # 交给读端抛出，避免线程里静默
+            self._q.put(e)
+
+    def readline(self, timeout=15):
+        try:
+            item = self._q.get(timeout=timeout)
+        except queue.Empty:
             raise TimeoutError("等待 MCP 响应超时")
-        r, _w, _x = select.select([fd], [], [], 1)
-        if not r:
-            continue
-        chunk = os.read(fd, 65536)
-        if not chunk:
+        if item is None:
             raise EOFError("MCP 进程已退出")
-        buf += chunk
-    return buf.split(b"\n", 1)[0].decode("utf-8")
+        if isinstance(item, Exception):
+            raise item
+        return item.decode("utf-8").rstrip("\r\n")
 
 
 class McpClient:
     def __init__(self, proc):
         self.proc = proc
         self._id = 0
+        self._reader = _LineReader(proc.stdout)
 
     def request(self, method, params=None):
         self._id += 1
@@ -82,7 +111,7 @@ class McpClient:
             msg["params"] = params
         self.proc.stdin.write((json.dumps(msg) + "\n").encode("utf-8"))
         self.proc.stdin.flush()
-        return json.loads(read_line_timeout(self.proc.stdout))
+        return json.loads(self._reader.readline(15))
 
     def notify(self, method):
         msg = {"jsonrpc": "2.0", "method": method}
@@ -137,7 +166,7 @@ def main():
                 "clientInfo": {"name": "selftest", "version": "0"}})
             info = (resp.get("result") or {}).get("serverInfo") or {}
             ok = info.get("name") == "arcmap-live-bridge" and \
-                str(info.get("version", "")).startswith("0.1")
+                str(info.get("version", "")).startswith("0.2")
             report("1-initialize", ok, "serverInfo=%s" % info)
             client.notify("notifications/initialized")
         except Exception as e:

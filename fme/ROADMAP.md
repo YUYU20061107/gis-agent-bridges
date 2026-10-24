@@ -11,6 +11,7 @@ FME 没有"当前会话"接口，官方又有 FME Flow MCP Server 覆盖服务�
 | 版本 | 内容 | 状态 |
 |---|---|---|
 | v0.1 | 命令行桥四动作：preflight（多策略探测 FME/fmeobjects）、scan（.fmw 清单）、info（.fmw 文本尽力解析：数据集＋transformer 计数）、backup（时间戳备份+sha256）；探针 probe_api.py；MCP runner 6 工具（只读 5 个＋带 confirm 闸的 run_workspace），运行日志 runs.jsonl 留档，可选 token 守卫 | VM 侧已验证：py_compile、selftest 全 PASS、info 对自造样本解析计数、backup 真复制、无 FME 时结构化报错；**fmeobjects 实机路径未验证** |
+| v0.2 | 自 SuperMap 实机校准迁移通用教训：selftest 改线程+队列逐行读取；新增 scripts/verify_project.py（只读盘点/迁移验收，含 --copy-to）与 ENGINEERING-PLAYBOOK.md（适配版）；CALIBRATION.md 增补迁移教训一节 | VM 侧验证（py_compile / selftest / 无 FME 环境结构化报错）；**仍未实机验证**，工具清单（6 个）与 confirm/token 闸不变 |
 
 ## 待实机校准清单（按依赖顺序）
 

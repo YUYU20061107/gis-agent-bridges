@@ -73,3 +73,35 @@
 - 模块/版本报错即停，回报原文，不许换解释器、换环境反复试探（最多按
   SKILL.md 报错表处置一次）。
 - 没有 JSON 原文的回报视为未执行；失败也要回传，不许只报结论。
+
+## 从 SuperMap 实机校准迁移的通用教训（2026-10-24）
+
+SuperMap 包已在 iDesktop 10i 上完成一轮实机校准（结论见 SuperMap 包的
+`docs/CALIBRATION-RESULTS-20261024.md`）。其中与软件无关的通用教训已迁移
+到本包；**本包自身仍未在真实 Global Mapper 上校准**，下表如实区分
+“已落到代码/文档”与“仍是待本软件实机验证的假设”。
+
+### 已落到本包代码 / 文档
+
+| 教训（SuperMap 实测） | 本包落地形态 |
+|---|---|
+| Windows 下 `select()` 不能等子进程管道句柄（WinError 10038），须改后台线程 + 队列逐行读取 | `live/selftest.py` 已改用与 SuperMap 同款的 `_LineReader`（线程 + queue），删 `import select` |
+| inspect 只复制工程文件会让相对路径数据源断链、盘点误报为空，须连带复制同目录数据源 | `scripts/verify_project.py --copy-to` 复制工程 + 同主名伴生 + 被引用数据的伴生集后对副本重开盘点；`gm_bridge.py inspect` 原有的临时副本逻辑与此一致 |
+| 只读盘点 + 结构化报错 + issues 列表，是迁移验收的可靠形态；异常不许裸 traceback | 新增 `scripts/verify_project.py`：纯 Python 层盘点引用/伴生完整性，模块缺失时输出结构化 `GM_MODULE_NOT_AVAILABLE` 并 exit 1 |
+| “假成功”真实存在：调用不报错 ≠ 效果落盘，须写后重读、以落盘文件为准 | 已写入 `ENGINEERING-PLAYBOOK.md` 第 4 节；`export_workspace_image` 的“落盘且字节>0 才算成功”口径与之同源（v0.1 已有） |
+| 原件只读、先备份只改副本、相对路径风险、迁移验收清单等工程纪律与具体软件无关 | 已写入 `ENGINEERING-PLAYBOOK.md`（Global Mapper 适配版）第 1/2/3/7 节 |
+
+注：SuperMap 的 token 文件机制（`SM_BRIDGE_TOKEN_FILE`）**未迁移**——本包
+只用环境变量 `GM_BRIDGE_TOKEN` 传 token 值、无 token 文件，这是按本包
+既有设计保留的差异，不视为缺口。
+
+### 仍是待本软件实机验证的假设（不要当成结论）
+
+- `globalmapper` 模块各功能组的真实函数名与签名（加载/枚举/图层名/显隐/
+  缩放/导出候选表）全部仍是假设，靠 `scripts/probe_api.py` 在实机钉死。
+- “脚本上下文能看到应用已加载图层”（discover 的 script-context-suspected
+  判据）未验证；方式 B 不成立时按 CALIBRATION 顺序改走文件投递。
+- 导出函数的落盘行为与参数形态、主视图刷新时机，均无实机证据。
+- SuperMap 实测的若干软件专属事实（打开须接返回值、改图须 set_map 回写、
+  专题须走特定入口等）**没有** Global Mapper 对应结论，不许类比套用；
+  本软件若有同类坑，按本指南的校准顺序实测后另行记录。

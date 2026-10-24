@@ -5,6 +5,7 @@
 | 版本 | 内容 | 状态 |
 |---|---|---|
 | v0.1 | 由 Pro 版同包逐文件衍生：无头桥三件只读动作：preflight（多策略定位 GeoScene Pro 自带 Python + arcpy/许可预检 + 产品身份线索 product_clue）、backup（时间戳备份 + sha256，同名 .gdb 整体复制）、inspect（复制到临时目录后盘点，固定标注 headless-saved-state）；兼容性探针 probe_api.py；实时桥（Blender MCP 模式）：inapp_bridge.py 跑在 GeoScene Pro 的 Python 窗口/Notebook 内（127.0.0.1:47619 + token 鉴权 + 当前工程多策略发现），mcp_server.py 纯标准库 stdio 转发；12 个工程工具 + ping（只读 7、视图级 3、写类 2 个带 confirm 闸、导出 1） | VM 侧已验证：全部脚本语法、selftest 6/6 PASS、无 arcpy 环境下 preflight/inspect 的结构化报错与退出码、backup 真复制 + sha256 + .gdb 整体复制；**与 GeoScene Pro 的兼容性（CURRENT 可用性、产品身份确认、各 API 形态）全部未实机验证**，按 docs/CALIBRATION.md 的对照表在实机逐项核验——这是先于一切功能演进的第一里程碑 |
+| v0.2 | 协议层与工程纪律升级（自 SuperMap 2026-10-24 实机校准迁移通用教训）：live/selftest.py 改 _LineReader 后台线程 + 队列读行、删 select 实现；token 文件支持 GEOSCENE_BRIDGE_TOKEN_FILE（inapp_bridge / mcp_server / selftest 三处一致）；serverInfo 与 ping 版本升 0.2；新增 scripts/verify_project.py（只读盘点 + --copy-to 迁移验收，含 product_clue）与 ENGINEERING-PLAYBOOK.md；docs/CALIBRATION.md 增补迁移教训一节 | VM 侧验证已于 2026-10-24 总复核记录（py_compile 全过、selftest 6/6 PASS、verify 无库结构化报错符合预期）；**与 GeoScene Pro 的兼容性仍全部未实机验证**，核验清单不变，仍是第一里程碑 |
 
 ## 待实机核验清单（按依赖顺序，与 docs/CALIBRATION.md 对照表同序）
 

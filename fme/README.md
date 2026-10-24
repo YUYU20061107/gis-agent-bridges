@@ -117,6 +117,7 @@
   位置、许可检出行为，都待使用者按 `docs/CALIBRATION.md` 在实机校准。
 - 本包在 gis-agent-bridges 合集中的定位是"能做的都做"里最克制的一个：
   官方已有服务器侧 MCP，桌面端又无会话接口，只做诚实的无头窄缝。
+- v0.2（2026-10-24）：selftest 改用线程+队列逐行读取（修 Windows 管道兼容）；新增 `scripts/verify_project.py` 只读盘点/迁移验收与 `ENGINEERING-PLAYBOOK.md`（自 SuperMap 实机校准迁移的通用教训，见 docs/CALIBRATION.md 新增一节）；工具清单（6 个）、confirm 闸与 BAD_TOKEN 语义不变，fmeobjects 实机路径仍未验证。
 
 ## 环境要求
 
@@ -135,8 +136,10 @@ fme/
 ├── ROADMAP.md           版本演进、待实机校准清单、后续候选
 ├── docs/
 │   └── CALIBRATION.md   实机校准指南（顺序、验收标准、红线）
+├── ENGINEERING-PLAYBOOK.md  工程文件生产手册（FME 适配版，v0.2 新增）
 ├── scripts/
 │   ├── fme_bridge.py    命令行桥（preflight / scan / info / backup，单行 JSON 输出）
+│   ├── verify_project.py 工程盘点/迁移验收（只读，v0.2 新增）
 │   └── probe_api.py     校准探针，输出本机 fmeobjects 的真实方法清单
 └── live/
     ├── mcp_server.py    MCP runner 服务端（stdio，纯标准库，6 个工具）

@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-arcmap_bridge.py — ArcMap 地图文档（.mxd）无头桥接脚本（v0.1，只读优先）
+arcmap_bridge.py — ArcMap 地图文档（.mxd）无头桥接脚本（v0.2，只读优先）
 
 子命令：
   preflight  环境预检（定位 ArcMap Desktop 的 Python 2.7 与 arcpy，多策略）

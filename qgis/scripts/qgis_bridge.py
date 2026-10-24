@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-qgis_bridge.py — QGIS 工程文件桥接脚本（v0.1，只读优先）
+qgis_bridge.py — QGIS 工程文件桥接脚本（v0.2，只读优先）
 
 子命令：
   preflight  环境预检（探测 qgis python 模块、qgis / qgis_process 命令；

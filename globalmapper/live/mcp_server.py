@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-mcp_server.py — Global Mapper MCP 服务端（stdio，纯标准库，v0.1）
+mcp_server.py — Global Mapper MCP 服务端（stdio，纯标准库，v0.2）
 
 与本系列其他桥不同：Global Mapper 没有可常驻的应用内桥形态，本服务端
 直接在自己的进程里 import globalmapper 模块（仅 Global Mapper Pro 提供）
@@ -39,7 +39,7 @@ import time
 
 PROTOCOL_VERSION = "2024-11-05"
 SERVER_NAME = "globalmapper-bridge"
-SERVER_VERSION = "0.1.0"
+SERVER_VERSION = "0.2.0"
 
 # ------------------------------------------------------------ API 候选表
 VERSION_ATTRS = ["__version__", "VERSION", "version"]
@@ -285,7 +285,7 @@ def _require_main_view_context():
 # ------------------------------------------------------------------- tools
 def tool_ping(args):
     mod = _gm()
-    return {"pong": True, "bridge": "globalmapper-bridge/0.1",
+    return {"pong": True, "bridge": "globalmapper-bridge/0.2",
             "module_found": mod is not None,
             "context": _detect_context()}
 

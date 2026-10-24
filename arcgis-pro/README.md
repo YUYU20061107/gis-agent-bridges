@@ -177,6 +177,8 @@ GitHub 上已有面向 ArcGIS Pro 的 MCP 项目，工具数量更多（30 个�
 
 ## 状态声明（请先读这一段）
 
+- **v0.2（2026-10-24）**：协议层与工程纪律升级（自 SuperMap 实机校准迁移通用教训）：selftest 改后台线程 + 队列读行（删 `select`，修 Windows 管道问题）；token 文件位置可用环境变量 `ARCGIS_PRO_BRIDGE_TOKEN_FILE` 覆盖；新增 `scripts/verify_project.py`（只读盘点 / `--copy-to` 迁移验收）与 `ENGINEERING-PLAYBOOK.md`。工具清单、端口（47616）、confirm 闸与 BAD_TOKEN 语义不变；**仍未在真实 ArcGIS Pro 上实机验证**，口径不变。
+
 - 无头桥：已在无 ArcGIS Pro 的环境验证脚本语法、backup 的真实复制 + sha256、
   无 arcpy 环境下的结构化报错 JSON 与退出码（ARCPY_NOT_AVAILABLE / FILE_NOT_FOUND）；
   arcpy 实机路径（preflight 的许可回报、inspect 的真实盘点）待使用者在 Pro 机器上校准。

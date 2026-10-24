@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-inapp_bridge.py — QGIS 应用内实时桥（v0.1）
+inapp_bridge.py — QGIS 应用内实时桥（v0.2）
 
 运行位置：QGIS 的 Python 控制台内（不是外部命令行）。
 作用：在本机 127.0.0.1:47618 开一个行分隔 JSON 的 TCP 服务，
@@ -8,7 +8,8 @@ inapp_bridge.py — QGIS 应用内实时桥（v0.1）
 桥在 QGIS 的 Python 会话里执行，操作当前打开的工程。
 
 安全：
-  - 只监听 127.0.0.1；每次启动生成随机 token，写入 ~/.qgis-live-bridge.token，
+  - 只监听 127.0.0.1；每次启动生成随机 token，写入 ~/.qgis-live-bridge.token
+    （可用环境变量 QGIS_BRIDGE_TOKEN_FILE 覆盖位置，MCP 侧同名变量须一致），
     请求必须带对 token，否则拒绝。
   - 写/执行类工具（add_layer_from_path / run_processing / save_project）
     需要 args.confirm == true 才执行；视图级操作（set_layer_visible /
@@ -54,7 +55,9 @@ import zipfile
 
 HOST = "127.0.0.1"
 PORT = 47618
-TOKEN_FILE = os.path.join(os.path.expanduser("~"), ".qgis-live-bridge.token")
+# token 文件位置可用 QGIS_BRIDGE_TOKEN_FILE 覆盖（MCP 侧同名变量须一致）
+TOKEN_FILE = os.environ.get("QGIS_BRIDGE_TOKEN_FILE") or \
+    os.path.join(os.path.expanduser("~"), ".qgis-live-bridge.token")
 TOKEN = uuid.uuid4().hex
 
 _state = {"project": None, "iface": None, "mode": None,
@@ -392,7 +395,7 @@ def _find_layer(project, selector):
 
 # ------------------------------------------------------------ 只读工具
 def tool_ping(args):
-    return {"pong": True, "bridge": "qgis-live-bridge/0.1",
+    return {"pong": True, "bridge": "qgis-live-bridge/0.2",
             "python": sys.version.split()[0], "dispatch": _state["dispatch"]}
 
 

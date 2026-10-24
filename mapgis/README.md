@@ -147,3 +147,5 @@ mapgis/
 ## License
 
 MIT，见 [LICENSE](LICENSE)。
+
+v0.2（2026-10-24）：selftest 改后台线程+队列读行（弃 select，修 Windows 管道问题）；token 文件支持环境变量 MAPGIS_BRIDGE_TOKEN_FILE；新增 scripts/verify_project.py（文件层盘点 + 厂商层结构化报错 + --copy-to 迁移验收）与 ENGINEERING-PLAYBOOK.md；工具清单（3 个探针工具）、端口与 BAD_TOKEN 语义不变，仍为 EXPLORATORY / UNVERIFIED，未做实机校准。

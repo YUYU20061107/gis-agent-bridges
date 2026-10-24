@@ -24,6 +24,11 @@
 - **运行时是 Python 2.7**：ArcMap Desktop 10.x 自带的解释器是 Python 2.7
   （如 `C:\Python27\ArcGIS10.x\python.exe`）。桥侧与无头脚本都写在
   Python 2.7 / 3.x 兼容子集上；MCP 服务端跑在进程外，用任意 Python 3。
+- **v0.2（2026-10-24）**：selftest 改后台线程 + 队列读行（修 Windows
+  select 等管道句柄问题）；token 文件位置可用环境变量
+  ARCMAP_BRIDGE_TOKEN_FILE 覆盖；新增只读盘点/迁移验收脚本
+  scripts/verify_project.py 与 ENGINEERING-PLAYBOOK.md；工具清单、
+  端口与安全闸不变，仍未实机验证（迁移说明见 docs/CALIBRATION.md）。
 - **未实机验证**：本包在无 ArcMap 的环境里验证了脚本语法、协议自检
   6/6 PASS、backup 真复制 + sha256、无 arcpy 时的报错 JSON 与退出码；
   arcpy 实机路径（尤其 Python 2.7 窗口内行为）**待在真实 ArcMap 上校准**，
@@ -168,8 +173,10 @@ arcmap-bridge-lite/
 ├── ROADMAP.md              版本说明、待实机校准清单
 ├── docs/
 │   └── CALIBRATION.md      实机校准指南（顺序、验收标准、回报格式、红线）
+├── ENGINEERING-PLAYBOOK.md 工程文件生产手册（副本纪律、写后重读验证、迁移验收）
 ├── scripts/
 │   ├── arcmap_bridge.py    无头桥脚本（preflight / backup / inspect，单行 JSON 输出）
+│   ├── verify_project.py   只读盘点/迁移验收（--copy-to 复制后对副本重开盘点）
 │   └── probe_api.py        校准探针，输出本机 arcpy 版本与关键函数清单
 └── live/
     ├── inapp_bridge.py     ArcMap 应用内桥（Python 2.7/3.x 子集，localhost 服务）

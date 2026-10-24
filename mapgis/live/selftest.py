@@ -3,7 +3,7 @@
 selftest.py — MapGIS 探针 MCP 服务端一键自检（纯标准库，无需 MapGIS）
 
 只启动 live/mcp_server.py 一个子进程（本包没有应用内桥），自动检查五项：
-  1) initialize            —— MCP 握手与 serverInfo（版本应为 0.1.x）
+  1) initialize            —— MCP 握手与 serverInfo（版本应为 0.2.x）
   2) tools/list            —— 恰好 3 个 mapgis_* 探针工具
   3) tools/call ping       —— 本地健康检查拿到 pong
   4) tools/call discover   —— 带正确 token 调用；无 MapGIS 环境时
@@ -11,18 +11,21 @@ selftest.py — MapGIS 探针 MCP 服务端一键自检（纯标准库，无需 
   5) bad-token             —— 错误 token 调 discover 必须被 BAD_TOKEN 拒绝
 逐项打印 PASS/FAIL，最后一行总结果；退出码 0=全过，1=有失败。
 自检只验证协议层与探针纪律，不验证任何 MapGIS API（那要等实机探针）。
-token 文件（~/.mapgis-bridge.token）若原先存在，自检结束会原样恢复。
+token 文件默认 ~/.mapgis-bridge.token，可用环境变量 MAPGIS_BRIDGE_TOKEN_FILE
+改路径；若原先存在，自检结束会原样恢复。
 """
 import json
 import os
-import select
+import queue
 import subprocess
 import sys
+import threading
 import time
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 MCP_PY = os.path.join(HERE, "mcp_server.py")
-TOKEN_FILE = os.path.join(os.path.expanduser("~"), ".mapgis-bridge.token")
+TOKEN_FILE = os.environ.get("MAPGIS_BRIDGE_TOKEN_FILE") or os.path.join(
+    os.path.expanduser("~"), ".mapgis-bridge.token")
 
 EXPECTED_TOOLS = {"mapgis_ping", "mapgis_discover", "mapgis_probe_environment"}
 
@@ -35,27 +38,45 @@ def report(name, ok, detail=""):
                          (" — " + detail) if detail else ""), flush=True)
 
 
-def read_line_timeout(stream, timeout=30):
-    fd = stream.fileno()
-    buf = b""
-    deadline = time.time() + timeout
-    while b"\n" not in buf:
-        if time.time() > deadline:
+class _LineReader:
+    """逐行读取子进程 stdout。
+
+    Windows 上 select() 只接受 socket，管道句柄会报 WinError 10038，
+    因此改用后台线程 + 队列，跨平台行为一致。
+    """
+
+    def __init__(self, stream):
+        self._q = queue.Queue()
+        threading.Thread(target=self._pump, args=(stream,), daemon=True).start()
+
+    def _pump(self, stream):
+        try:
+            while True:
+                line = stream.readline()
+                if not line:
+                    self._q.put(None)
+                    return
+                self._q.put(line)
+        except Exception as e:  # 交给读端抛出，避免线程里静默
+            self._q.put(e)
+
+    def readline(self, timeout=15):
+        try:
+            item = self._q.get(timeout=timeout)
+        except queue.Empty:
             raise TimeoutError("等待 MCP 响应超时")
-        r, _w, _x = select.select([fd], [], [], 1)
-        if not r:
-            continue
-        chunk = os.read(fd, 65536)
-        if not chunk:
+        if item is None:
             raise EOFError("MCP 进程已退出")
-        buf += chunk
-    return buf.split(b"\n", 1)[0].decode("utf-8")
+        if isinstance(item, Exception):
+            raise item
+        return item.decode("utf-8").rstrip("\r\n")
 
 
 class McpClient:
     def __init__(self, proc):
         self.proc = proc
         self._id = 0
+        self._reader = _LineReader(proc.stdout)
 
     def request(self, method, params=None):
         self._id += 1
@@ -64,7 +85,7 @@ class McpClient:
             msg["params"] = params
         self.proc.stdin.write((json.dumps(msg) + "\n").encode("utf-8"))
         self.proc.stdin.flush()
-        return json.loads(read_line_timeout(self.proc.stdout))
+        return json.loads(self._reader.readline(30))
 
     def notify(self, method):
         msg = {"jsonrpc": "2.0", "method": method}
@@ -120,7 +141,7 @@ def main():
                 "clientInfo": {"name": "selftest", "version": "0"}})
             info = (resp.get("result") or {}).get("serverInfo") or {}
             ok = info.get("name") == "mapgis-probe-bridge" and \
-                str(info.get("version", "")).startswith("0.1")
+                str(info.get("version", "")).startswith("0.2")
             report("1-initialize", ok, "serverInfo=%s" % info)
             client.notify("notifications/initialized")
         except Exception as e:

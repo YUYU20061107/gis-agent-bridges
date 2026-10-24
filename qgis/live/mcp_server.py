@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-mcp_server.py — MCP 服务端（stdio，纯标准库，v0.1）
+mcp_server.py — MCP 服务端（stdio，纯标准库，v0.2）
 
 把 MCP 工具调用转发到 QGIS 内的应用内桥（inapp_bridge.py，127.0.0.1:47618）。
 把本服务端注册到你的 AI Agent / MCP 客户端的 MCP 配置后，Agent 即可用下列工具
@@ -11,12 +11,13 @@ mcp_server.py — MCP 服务端（stdio，纯标准库，v0.1）
   写/执行类（须 confirm=true）：qgis_add_layer_from_path / qgis_run_processing /
         qgis_save_project
 刻意不提供任意代码执行工具：qgis_run_processing 只接受算法 id + 参数 JSON。
-v0.1 全部实时工具为实验性实现，未在真实 QGIS 上验证；桥侧调不通时会返回
+v0.2 全部实时工具为实验性实现，未在真实 QGIS 上验证；桥侧调不通时会返回
 结构化错误，Agent 必须如实回报，不许把错误说成成功。
 
 环境变量：
   QGIS_BRIDGE_HOST（默认 127.0.0.1）、QGIS_BRIDGE_PORT（默认 47618）、
-  QGIS_BRIDGE_TOKEN（优先；否则读 ~/.qgis-live-bridge.token）
+  QGIS_BRIDGE_TOKEN（优先；否则读 QGIS_BRIDGE_TOKEN_FILE 指向的
+  token 文件，默认 ~/.qgis-live-bridge.token）
 日志写 stderr，stdout 只走 MCP 协议。
 """
 import json
@@ -26,7 +27,9 @@ import sys
 
 HOST = os.environ.get("QGIS_BRIDGE_HOST", "127.0.0.1")
 PORT = int(os.environ.get("QGIS_BRIDGE_PORT", "47618"))
-TOKEN_FILE = os.path.join(os.path.expanduser("~"), ".qgis-live-bridge.token")
+# token 文件位置可用 QGIS_BRIDGE_TOKEN_FILE 覆盖（桥侧同名变量须一致）
+TOKEN_FILE = os.environ.get("QGIS_BRIDGE_TOKEN_FILE") or \
+    os.path.join(os.path.expanduser("~"), ".qgis-live-bridge.token")
 PROTOCOL_VERSION = "2024-11-05"
 
 
@@ -117,7 +120,7 @@ def handle(msg):
         return {"jsonrpc": "2.0", "id": mid, "result": {
             "protocolVersion": PROTOCOL_VERSION,
             "capabilities": {"tools": {}},
-            "serverInfo": {"name": "qgis-live-bridge", "version": "0.1.0"}}}
+            "serverInfo": {"name": "qgis-live-bridge", "version": "0.2.0"}}}
     if method in ("notifications/initialized", "notifications/cancelled"):
         return None
     if method == "ping":

@@ -21,14 +21,14 @@ live in-app MCP bridge — all in one repo for easy reuse.
 | 软件 | 目录 | 形态 | MCP 工具数 | 状态 |
 |---|---|---|---|---|
 | SuperMap iDesktopX | `supermap/` | 实时＋无头 | 13 | v0.4 · 文件回退模式已实机校准（iDesktop 10i，13/13）；iDesktopX 实时待验证；v0.4 增补工程文件生产手册、三维场景资产与验收脚本 |
-| ArcGIS Pro | `arcgis-pro/` | 实时＋无头 | 13 | v0.1 · 未实机校准 |
-| ArcMap（Esri 已退役，个人自用向） | `arcmap/` | 实时＋无头 | 10 | v0.1 · Python 2.7 待实机验证 |
-| QGIS | `qgis/` | 实时＋无头 | 12 | v0.1 · 未实机校准 |
-| GeoScene Pro（易智瑞） | `geoscene/` | 实时＋无头（ArcGIS Pro 同源衍生） | 13 | v0.1 · 兼容性待实机核验 |
-| MapGIS（中地数码） | `mapgis/` | 探针＋无头骨架 | 3 | 探索版 · 实时接口未证实 |
-| ENVI（NV5） | `envi/` | 仅无头 | 7 | v0.1 · idlpy 待实机 |
-| Global Mapper（Blue Marble） | `globalmapper/` | 无头＋脚本半实时 | 7 | v0.1 · API 签名待探针 |
-| FME（Safe Software） | `fme/` | 仅无头 runner | 6 | v0.1 · 与官方 Flow MCP 互补 |
+| ArcGIS Pro | `arcgis-pro/` | 实时＋无头 | 13 | v0.2 · 已对齐 SuperMap 校准通用升级（selftest 线程读、token 文件环境变量、verify_project 盘点脚本、ENGINEERING-PLAYBOOK）、未实机校准 |
+| ArcMap（Esri 已退役，个人自用向） | `arcmap/` | 实时＋无头 | 10 | v0.2 · 已对齐 SuperMap 校准通用升级（selftest 线程读、token 文件环境变量、verify_project 盘点脚本、ENGINEERING-PLAYBOOK）、Python 2.7 待实机验证、未实机校准 |
+| QGIS | `qgis/` | 实时＋无头 | 12 | v0.2 · 已对齐 SuperMap 校准通用升级（selftest 线程读、token 文件环境变量、verify_project 盘点脚本、ENGINEERING-PLAYBOOK）、未实机校准 |
+| GeoScene Pro（易智瑞） | `geoscene/` | 实时＋无头（ArcGIS Pro 同源衍生） | 13 | v0.2 · 已对齐 SuperMap 校准通用升级（selftest 线程读、token 文件环境变量、verify_project 盘点脚本、ENGINEERING-PLAYBOOK）、兼容性待实机核验、未实机校准 |
+| MapGIS（中地数码） | `mapgis/` | 探针＋无头骨架 | 3 | 探索版 v0.2 · 已对齐 SuperMap 校准通用升级（selftest 线程读、token 文件环境变量、verify_project 盘点脚本、ENGINEERING-PLAYBOOK）、实时接口未证实、未实机校准 |
+| ENVI（NV5） | `envi/` | 仅无头 | 7 | v0.2 · 已对齐 SuperMap 校准通用升级（selftest 线程读、verify_project 盘点脚本、ENGINEERING-PLAYBOOK；本包无 token 文件）、idlpy 待实机、未实机校准 |
+| Global Mapper（Blue Marble） | `globalmapper/` | 无头＋脚本半实时 | 7 | v0.2 · 已对齐 SuperMap 校准通用升级（selftest 线程读、verify_project 盘点脚本、ENGINEERING-PLAYBOOK；本包无 token 文件）、API 签名待探针、未实机校准 |
+| FME（Safe Software） | `fme/` | 仅无头 runner | 6 | v0.2 · 已对齐 SuperMap 校准通用升级（selftest 线程读、verify_project 盘点脚本、ENGINEERING-PLAYBOOK；本包无 token 文件）、与官方 Flow MCP 互补、未实机校准 |
 
 ## 统一设计原则
 

@@ -159,3 +159,5 @@ Exelis）没有任何隶属、授权或合作关系；ENVI、IDL 等名称与商
 ## License
 
 MIT，见 [LICENSE](LICENSE)。
+
+v0.2（2026-10-24）：selftest 改后台线程+队列读行（弃 select，修 Windows 管道问题）；新增 scripts/verify_project.py（.hdr 文件对盘点 + 伴生文件完整性 + --copy-to 副本重盘）与 ENGINEERING-PLAYBOOK.md；token 仍只用环境变量 ENVI_BRIDGE_TOKEN（无 token 文件）；工具清单（7 个）、confirm 闸与 BAD_TOKEN 语义不变，仍仅无头，idlpy 任务层未做实机校准。

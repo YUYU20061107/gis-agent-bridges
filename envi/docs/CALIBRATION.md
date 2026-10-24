@@ -76,3 +76,38 @@ Python 解释器能 `from idlpy import IDL`。校准全程在**数据副本**上
 按步回报：①每步的原始输出（JSON 或探针全文）；②命中的策略名（via）；
 ③差异清单（预期 vs 实测）；④实机 ENVI/IDL 版本号。缺原始输出的步骤
 视为未校准。
+
+## 从 SuperMap 实机校准迁移的通用教训（2026-10-24）
+
+SuperMap 包已在 iDesktop 10i 上完成第一轮实机校准（见其
+docs/CALIBRATION-RESULTS-20261024.md）。以下通用教训迁移到本包，
+分两档如实标注：已落到代码的、仍是待本软件实机验证的假设。
+
+### 已落到代码 / 手册
+
+- **Windows 下 selftest 不能用 select() 等管道句柄**（WinError 10038）：
+  已落实——`live/selftest.py` 改为后台线程 + 队列逐行读取（_LineReader），
+  与 SuperMap 的修复同构。
+- **盘点/迁移必须连带复制伴生文件**（SuperMap 侧是相对路径数据源）：
+  已落实——`scripts/verify_project.py --copy-to` 成对复制 .hdr + 数据
+  文件（及 .shp 系侧文件）后对副本重开盘点；`envi_bridge.py backup`
+  原本即成对复制、缺一半拒绝。
+- **结构化报错、绝不裸 traceback**：已落实——verify_project.py 的
+  异常一律转 `{"ok": false, "error": ...}` JSON 并以退出码 1 结束。
+- **CWD 写入审计**：已落实（审计结论）——`live/mcp_server.py` 不往
+  当前工作目录写日志/临时文件（只读 .hdr、stdout 只走协议）；
+  SuperMap 侧“厂商库往 CWD 写日志”的问题在本包纯 Python 层不存在。
+- **token 纪律**：本包只用环境变量 `ENVI_BRIDGE_TOKEN` 传 token 值、
+  没有 token 文件，SuperMap 的 token 文件环境变量做法对本包不适用。
+
+### 仍是待 ENVI 实机验证的假设（不得当作已证实结论）
+
+- **“写后必须回写/重读才算落盘”**（SuperMap 侧 get_map 副本 + set_map
+  回写、旧专题路径假成功）：迁移为纪律——ENVITask 执行后必须重读
+  输出文件并盘点对账（见 ENGINEERING-PLAYBOOK.md 第 4 节）；但
+  ENVITask 具体的假成功形态、参数 set 的大小写行为，待按本指南
+  第 2–4 步在真实 ENVI 上校准后才能钉死。
+- **导出以文件真实落盘为准**：export 已检查落盘与字节数 > 0，
+  “导出内容与预期一致”仍需实机样本核对。
+- **idlpy/IDL 运行时是否往 CWD 写日志或临时文件**：待实机观察，
+  本包代码层审计结论不能替代运行时结论。

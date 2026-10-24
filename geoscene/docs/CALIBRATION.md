@@ -98,3 +98,44 @@ discover 的 product_name/install_dir）无论结论如何都必须完整回传�
 - 不许自行扩展工具集或动作范围；**尤其不许临时加任意代码执行或任意 GP
   调用工具来"凑"核验结论**。发现 API 与脚本假设不符，回报现场方法清单，
   等维护者据实收紧，不要在实机临时发明新策略后当成定案。
+
+## 从 SuperMap 实机校准迁移的通用教训（2026-10-24）
+
+SuperMap 桥已于 2026-10-24 在 iDesktop 10i 上完成第一轮实机校准
+（结论见同合集仓 `supermap/docs/CALIBRATION-RESULTS-20261024.md`）。
+其中跨软件通用的教训已按本包形态迁移；**迁移的只是纪律与代码写法，
+不是 GeoScene Pro 的实机结论**——本包与 GeoScene Pro 的兼容性仍是
+同源推断，未经任何实机验证，本节不改变文首的核验定位。
+
+### 已落到本包代码 / 文档（v0.2）
+
+- **selftest 线程读**：`live/selftest.py` 读取子进程 stdout 改为后台线程 +
+  队列（`_LineReader`），删除 `select` 实现。SuperMap 实测：Windows 上
+  `select()` 对管道句柄抛 WinError 10038，此写法跨平台一致。
+- **token 文件环境变量**：token 文件位置可用 `GEOSCENE_BRIDGE_TOKEN_FILE`
+  覆盖（`live/inapp_bridge.py`、`live/mcp_server.py`、`live/selftest.py`
+  三处一致），应对受控文件夹访问等导致默认用户目录不可写的环境。
+- **verify 脚本**：新增 `scripts/verify_project.py`——只读盘点工程
+  （纯标准库层查文件 / ZIP 结构 / shapefile 伴生完整性，arcpy 层枚举
+  地图 / 图层 / 表 / 布局，并回报 product_clue），`--copy-to` 整包复制后
+  对副本重开盘点做迁移验收；无 arcpy 时结构化报错
+  `ARCPY_NOT_AVAILABLE` 并退出码 1，不抛 traceback。
+  配套纪律见 `ENGINEERING-PLAYBOOK.md`。
+- **原件纪律与证据口径**：先备份、只改副本、原件 mtime 验收、写后重读
+  验证、导出以真实落盘为准——已写入 `ENGINEERING-PLAYBOOK.md`。
+
+### 仍是待本软件实机验证的假设（不要当作已验证结论）
+
+- **兼容性本身**：`arcpy.mp.ArcGISProject("CURRENT")` 等接口在 GeoScene Pro
+  中的可用性仍是本指南对照表第 0–1 项要证实或证伪的前提，SuperMap 的
+  任何结论都不能替代这一步。
+- **写回持久化**：CIM 定义回写（图层显隐的备用路径、标注 `showLabels`
+  在 CIM 中的确切位置）改完后是否真进工程文件、保存后重开是否仍在；
+  SuperMap 侧"改包装对象不回写就等于没改"与"旧专题路径假成功"两条
+  实测教训在本包只是风险提示，且其在 GeoScene 的对应形态完全未知。
+- **导出参数**：`Layout.exportToPNG` 的分辨率参数位置、
+  `MapFrame.exportToPNG` 的存在性与宽高参数在 GeoScene Pro 中是否与
+  ArcGIS Pro 一致，仍是待核验假设。
+- **假成功路径**：`Map.addDataFromPath` 调用不报错但图层未落位、
+  `layers_after` 计数不可信等情形是否存在，须以界面与重开盘点双重
+  证据判定，不能只看桥的回报 JSON，更不能以 ArcGIS Pro 上的表现推断。

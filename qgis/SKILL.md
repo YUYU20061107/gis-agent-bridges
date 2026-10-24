@@ -53,6 +53,15 @@
 实际命中的策略记在输出的 `mode` / `opened_via` 字段里，回报时不许省略。
 拿不到的字段为 null 并在 `notes` 里说明原因，不许猜。
 
+### 只读盘点/迁移验收 verify_project.py（v0.2 新增）
+
+python scripts/verify_project.py <工程文件路径> [--copy-to <新目录>]
+
+纯 Python 解析盘点图层/数据源/CRS/图层树/布局，逐图层核对数据源文件与
+shapefile 伴生件存在性，问题记入 issues；--copy-to 会复制工程、同主名
+伴生文件与各图层本地数据源后再对副本盘点。全程只读，失败输出结构化
+JSON 并退出码 1。迁移/交付验收按 ENGINEERING-PLAYBOOK.md 第 7 节执行。
+
 ### 校准探针 probe_api.py（仅首次部署或版本变更时运行一次）
 ```
 <python> scripts/probe_api.py [工程路径]

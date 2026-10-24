@@ -3,7 +3,7 @@
 selftest.py — Global Mapper MCP 服务端一键自检（纯标准库，无需 Global Mapper）
 
 启动 live/mcp_server.py 一个子进程（带 GM_BRIDGE_TOKEN），自动检查五项：
-  1) initialize  —— MCP 握手与 serverInfo（版本应为 0.1.x）
+  1) initialize  —— MCP 握手与 serverInfo（版本应为 0.2.x）
   2) tools/list  —— 7 个 globalmapper_* 工具齐全
   3) bad-token   —— 设置了 GM_BRIDGE_TOKEN 时，不带 _token 的调用必须
                     被 BAD_TOKEN 拒绝
@@ -16,9 +16,10 @@ selftest.py — Global Mapper MCP 服务端一键自检（纯标准库，无需 
 """
 import json
 import os
-import select
+import queue
 import subprocess
 import sys
+import threading
 import time
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -40,27 +41,46 @@ def report(name, ok, detail=""):
                          (" — " + detail) if detail else ""), flush=True)
 
 
-def read_line_timeout(stream, timeout=15):
-    fd = stream.fileno()
-    buf = b""
-    deadline = time.time() + timeout
-    while b"\n" not in buf:
-        if time.time() > deadline:
+class _LineReader:
+    """逐行读取子进程 stdout。
+
+    Windows 上 select() 只接受 socket，管道句柄会报 WinError 10038，
+    因此改用后台线程 + 队列，跨平台行为一致。
+    （自 SuperMap 桥 live/selftest.py 实机校准结论迁移，2026-10-24。）
+    """
+
+    def __init__(self, stream):
+        self._q = queue.Queue()
+        threading.Thread(target=self._pump, args=(stream,), daemon=True).start()
+
+    def _pump(self, stream):
+        try:
+            while True:
+                line = stream.readline()
+                if not line:
+                    self._q.put(None)
+                    return
+                self._q.put(line)
+        except Exception as e:  # 交给读端抛出，避免线程里静默
+            self._q.put(e)
+
+    def readline(self, timeout=15):
+        try:
+            item = self._q.get(timeout=timeout)
+        except queue.Empty:
             raise TimeoutError("等待 MCP 响应超时")
-        r, _w, _x = select.select([fd], [], [], 1)
-        if not r:
-            continue
-        chunk = os.read(fd, 65536)
-        if not chunk:
+        if item is None:
             raise EOFError("MCP 进程已退出")
-        buf += chunk
-    return buf.split(b"\n", 1)[0].decode("utf-8")
+        if isinstance(item, Exception):
+            raise item
+        return item.decode("utf-8").rstrip("\r\n")
 
 
 class McpClient:
     def __init__(self, proc):
         self.proc = proc
         self._id = 0
+        self._reader = _LineReader(proc.stdout)
 
     def request(self, method, params=None):
         self._id += 1
@@ -69,7 +89,7 @@ class McpClient:
             msg["params"] = params
         self.proc.stdin.write((json.dumps(msg) + "\n").encode("utf-8"))
         self.proc.stdin.flush()
-        return json.loads(read_line_timeout(self.proc.stdout))
+        return json.loads(self._reader.readline(15))
 
     def notify(self, method):
         msg = {"jsonrpc": "2.0", "method": method}
@@ -106,7 +126,7 @@ def main():
                 "clientInfo": {"name": "selftest", "version": "0"}})
             info = (resp.get("result") or {}).get("serverInfo") or {}
             ok = info.get("name") == "globalmapper-bridge" and \
-                str(info.get("version", "")).startswith("0.1")
+                str(info.get("version", "")).startswith("0.2")
             report("1-initialize", ok, "serverInfo=%s" % info)
             client.notify("notifications/initialized")
         except Exception as e:

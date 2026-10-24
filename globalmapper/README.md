@@ -163,6 +163,7 @@ MCP 服务端（半实时）：
   首次实机使用必须按 [docs/CALIBRATION.md](docs/CALIBRATION.md) 逐项校准。
 - globalmapper 不同大版本的 API 命名有差异，桥接脚本会把命中的策略记进输出
   （`opened_via` / `via`），校准后请据实收紧并注明实机版本。
+- v0.2（2026-10-24）：selftest 改用线程+队列逐行读取（修 Windows 管道兼容）；新增 `scripts/verify_project.py` 只读盘点/迁移验收与 `ENGINEERING-PLAYBOOK.md`（自 SuperMap 实机校准迁移的通用教训，见 docs/CALIBRATION.md 新增一节）；工具清单、端口与安全闸不变，与 Global Mapper 本体的对接仍未实机验证。
 
 ## 环境要求
 
@@ -181,8 +182,10 @@ globalmapper/
 ├── ROADMAP.md           版本演进、待实机校准清单、后续候选路线评估
 ├── docs/
 │   └── CALIBRATION.md   实机校准指南（顺序、验收标准、回报格式、红线）
+├── ENGINEERING-PLAYBOOK.md  工程文件生产手册（Global Mapper 适配版，v0.2 新增）
 ├── scripts/
 │   ├── gm_bridge.py     无头桥脚本（preflight / backup / inspect，单行 JSON 输出）
+│   ├── verify_project.py 工程盘点/迁移验收（只读，v0.2 新增）
 │   └── probe_api.py     校准探针，输出本机 globalmapper 模块的候选函数命中清单
 └── live/
     ├── mcp_server.py    MCP 服务端（stdio、纯标准库、进程内直调模块；无常驻应用内桥）

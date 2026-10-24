@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-mcp_server.py — MCP 服务端（stdio，纯标准库，v0.1）
+mcp_server.py — MCP 服务端（stdio，纯标准库，v0.2）
 
 把 MCP 工具调用转发到 ArcGIS Pro 内的应用内桥（inapp_bridge.py，127.0.0.1:47616）。
 把本服务端注册到你的 AI Agent / MCP 客户端的 MCP 配置后，Agent 即可用下列工具
@@ -12,12 +12,13 @@ mcp_server.py — MCP 服务端（stdio，纯标准库，v0.1）
         arcgis_set_labels_visible
   写类（须 confirm=true）：arcgis_add_layer_from_path / arcgis_save_project
 工具面刻意收窄：不提供任意代码执行、任意 GP 工具调用类工具（有意的安全取舍）。
-v0.1 的实时桥为实验性实现，未在真实 ArcGIS Pro 上验证；桥侧调不通时会返回
+v0.2 的实时桥为实验性实现，未在真实 ArcGIS Pro 上验证；桥侧调不通时会返回
 结构化错误，Agent 必须如实回报，不许把错误说成成功。
 
 环境变量：
   ARCPRO_BRIDGE_HOST（默认 127.0.0.1）、ARCPRO_BRIDGE_PORT（默认 47616）、
-  ARCPRO_BRIDGE_TOKEN（优先；否则读 ~/.arcgis-pro-live-bridge.token）
+  ARCPRO_BRIDGE_TOKEN（优先；否则读 ARCGIS_PRO_BRIDGE_TOKEN_FILE 指定的 token 文件，
+  默认 ~/.arcgis-pro-live-bridge.token）
 日志写 stderr，stdout 只走 MCP 协议。
 """
 import json
@@ -27,7 +28,8 @@ import sys
 
 HOST = os.environ.get("ARCPRO_BRIDGE_HOST", "127.0.0.1")
 PORT = int(os.environ.get("ARCPRO_BRIDGE_PORT", "47616"))
-TOKEN_FILE = os.path.join(os.path.expanduser("~"), ".arcgis-pro-live-bridge.token")
+TOKEN_FILE = os.environ.get("ARCGIS_PRO_BRIDGE_TOKEN_FILE") or \
+    os.path.join(os.path.expanduser("~"), ".arcgis-pro-live-bridge.token")
 PROTOCOL_VERSION = "2024-11-05"
 
 
@@ -120,7 +122,7 @@ def handle(msg):
         return {"jsonrpc": "2.0", "id": mid, "result": {
             "protocolVersion": PROTOCOL_VERSION,
             "capabilities": {"tools": {}},
-            "serverInfo": {"name": "arcgis-pro-live-bridge", "version": "0.1.0"}}}
+            "serverInfo": {"name": "arcgis-pro-live-bridge", "version": "0.2.0"}}}
     if method in ("notifications/initialized", "notifications/cancelled"):
         return None
     if method == "ping":

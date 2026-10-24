@@ -64,3 +64,50 @@
   发现 API 与脚本假设不符，回报现场方法清单，等维护者据实收紧。
 - 版本报错即停，回报原始报错全文，不许换版本、换环境反复试探。
 - 不许自行扩展工具集或动作范围。
+
+## 从 SuperMap 实机校准迁移的通用教训（2026-10-24）
+
+SuperMap 包已在 iDesktop 10i 上完成一轮实机校准（文件回退模式 13/13
+工具通过），其中一批教训是跨软件通用的。本节记录它们在本包的落地
+状态；注意：迁来的只是纪律与代码形态，**不代表本包已实机校准**，
+本包在真实 QGIS 上的状态仍以本文件前文的校准目标为准。
+
+已落到代码/文档（v0.2）：
+
+- selftest 的管道读行：Windows 上 select() 等管道句柄会报 WinError
+  10038（SuperMap 实机钉死），live/selftest.py 已改后台线程 + 队列
+  逐行读取，与 SuperMap 同形态。自检检查项与数目不变（仍 6 项）。
+- token 文件环境变量覆盖：受限环境里用户目录可能不可写，桥、MCP
+  服务端、selftest 三处的 token 文件位置已统一支持环境变量
+  QGIS_BRIDGE_TOKEN_FILE 覆盖默认路径（SuperMap 侧同理用
+  SM_BRIDGE_TOKEN_FILE，且已实机验证）。
+- 只读盘点与迁移验收工具：新增 scripts/verify_project.py，复用
+  qgis_bridge.py 的纯 Python 解析实现盘点 .qgs/.qgz（图层/数据源/
+  CRS/图层树/布局），逐图层核对数据源文件与 shapefile 伴生件存在性
+  并记入 issues，--copy-to 复制工程与伴生/数据源文件后对副本重开
+  盘点，结构化 JSON 输出；对应 SuperMap 的 verify_workspace.py。
+- 工程纪律成文：新增 ENGINEERING-PLAYBOOK.md（原件只读/先备份只改
+  副本、伴生文件完整性、相对路径风险、写后重读验证、GUI 与无头
+  边界、导出注意、迁移验收、失败如实回报）。
+
+仍是待本软件实机验证的假设（不许当结论）：
+
+- 写回持久化：SuperMap 钉死的是「取到的地图对象是副本、必须回写
+  才落盘」；QGIS 侧对应问题是 QgsProject.write() 返回 True 是否
+  等于改动真落盘，尤其是经 iface 加入的图层与图层树显隐这类带
+  GUI 状态的写入——保存后必须重开副本盘点核对，未核对前不许仅凭
+  返回 True 就报成功。
+- 导出参数：SuperMap 钉死的是导出尺寸须用关键字传参、位置传参会
+  被误解而报错；QGIS 侧三条导出策略（QgsLayoutExporter 的
+  exportToImage 签名与 ImageExportSettings 字段 / 画布 saveAsImage
+  / 顺序渲染任务）在目标版本上的真实签名仍是假设，以文件落盘 +
+  字节数与内容核对为准。
+- 假成功路径：SuperMap 存在「API 不报错但改动不进文件」的假成功
+  路径（改前改后导出图哈希不变可复现）；QGIS 侧是否存在同类路径
+  （如显隐 setter 命中了但图层树状态未变、Processing 返回成功但
+  输出层为空）未知，验收一律走「保存后重开盘点 + 界面证据」，
+  不采信单次调用的返回。
+- CWD 可写性：SuperMap 的运行时会往当前工作目录写日志文件、CWD
+  只读时须切换目录；本包经审计未发现桥/MCP 往 CWD 写日志或临时
+  文件的行为（日志只走 stderr/stdout，临时文件走系统临时目录），
+  QGIS 本体在实机上是否往 CWD 写文件仍待观察。

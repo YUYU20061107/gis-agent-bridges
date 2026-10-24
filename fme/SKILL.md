@@ -60,6 +60,7 @@ fme_run_workspace(path=<.fmw>, parameters={<published parameters 的 JSON 对象
 ```
 输出本机 fmeobjects 的模块位置、版本线索与 FMEWorkspaceRunner 方法清单，
 必须完整回传给用户/维护者，不得据此自行扩展动作。
+v0.2 新增只读盘点 `scripts/verify_project.py --workspace <某个 .fmw>`（可加 `--copy-to <新目录>` 做迁移验收；无 fmeobjects 时输出 FME_NOT_AVAILABLE 结构化报错并 exit 1）与工程手册 `ENGINEERING-PLAYBOOK.md`，做迁移/交付验收时按手册清单执行。
 
 ## 安全纪律（硬规则，违反即停）
 
