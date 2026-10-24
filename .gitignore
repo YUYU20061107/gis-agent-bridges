@@ -1,0 +1,10 @@
+__pycache__/
+*.py[cod]
+*.zip
+*.tmp
+*.bak-*
+backup/
+backups/
+.*-live-bridge.token
+.fme-agent-bridge.token
+.supermap-live-bridge.token

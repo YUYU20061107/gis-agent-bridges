@@ -1,0 +1,8 @@
+__pycache__/
+*.py[cod]
+*.zip
+.arcgis-pro-live-bridge.token
+*.tmp
+*.bak-*
+backup/
+backups/

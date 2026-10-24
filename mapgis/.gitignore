@@ -1,0 +1,5 @@
+__pycache__/
+*.py[cod]
+*.bak-*
+.mapgis-bridge.token
+backups/

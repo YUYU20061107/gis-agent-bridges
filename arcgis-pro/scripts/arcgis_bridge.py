@@ -1,0 +1,388 @@
+# -*- coding: utf-8 -*-
+"""
+arcgis_bridge.py — ArcGIS Pro 工程文件无头桥接脚本（v0.1，只读优先）
+
+子命令：
+  preflight  环境与许可预检（定位 ArcGIS Pro 自带 Python、导入 arcpy、读安装/许可信息）
+  backup     备份工程文件（时间戳副本 + sha256），纯标准库；同名 .gdb 文件夹整体复制
+  inspect    工程盘点：先把 .aprx 复制到临时目录再打开，枚举地图/图层/表/布局，输出 JSON
+
+设计约束：
+  - 一切结果以单行 JSON 输出到 stdout；失败也是 JSON，退出码非 0。
+  - inspect 永不直接打开原件；先复制到临时目录（同名 .gdb 一并复制，保证相对路径数据源可解析）。
+  - 【关键事实】外部进程打开 .aprx 只能看到上次存盘的状态，看不到 ArcGIS Pro
+    界面里的未保存修改。inspect 输出固定标注 mode=headless-saved-state，不冒充实时。
+  - 对 arcpy.mp 的访问采用防御式多策略（属性读取逐个兜底），命中的方式记入
+    输出的 api_path / *_via 字段，供维护者据实收紧。
+  - 本脚本不包含任何写业务动作（不 save、不删、不改）。
+"""
+import argparse
+import hashlib
+import io
+import json
+import os
+import shutil
+import sys
+import tempfile
+import traceback
+from datetime import datetime
+
+try:
+    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8", errors="replace")
+except Exception:
+    pass
+
+
+def emit(obj, exit_code=0):
+    sys.stdout.write(json.dumps(obj, ensure_ascii=False) + "\n")
+    sys.stdout.flush()
+    return exit_code
+
+
+def fail(error_code, message, **extra):
+    obj = {"ok": False, "error_code": error_code, "message": message}
+    obj.update(extra)
+    return emit(obj, exit_code=1)
+
+
+def _safe_str(v):
+    if v is None:
+        return None
+    try:
+        return str(v)
+    except Exception:
+        return None
+
+
+def _try_attrs(obj, names):
+    """按顺序尝试属性/方法，返回 (值, 命中的名字)；属性 getter 抛错也兜底；
+    取到的方法会自动调用（无参）。arcpy 的某些属性（如图层 dataSource 对组图层）
+    读取时会抛 RuntimeError，因此 getattr 本身也必须在 try 内。"""
+    for name in names:
+        if obj is None:
+            continue
+        try:
+            val = getattr(obj, name)
+        except Exception:
+            continue
+        try:
+            if callable(val):
+                val = val()
+            return val, name
+        except Exception:
+            continue
+    return None, None
+
+
+def _to_list(coll):
+    if coll is None:
+        return []
+    try:
+        return list(coll)
+    except Exception:
+        pass
+    try:
+        return [coll[i] for i in range(len(coll))]
+    except Exception:
+        return []
+
+
+def _sha256_file(path):
+    h = hashlib.sha256()
+    with open(path, "rb") as f:
+        for chunk in iter(lambda: f.read(1024 * 1024), b""):
+            h.update(chunk)
+    return h.hexdigest()
+
+
+# ---------------------------------------------------------------- preflight
+_PRO_PY3_REL = os.path.join("bin", "Python", "envs", "arcgispro-py3", "python.exe")
+_PROPY_REL = os.path.join("bin", "Python", "Scripts", "propy.bat")
+_FIXED_INSTALL_DIRS = [r"C:\Program Files\ArcGIS\Pro",
+                       r"C:\Program Files (x86)\ArcGIS\Pro"]
+
+
+def _find_pro_pythons():
+    """多策略定位 ArcGIS Pro 自带 Python / propy，返回 [{path, via}, ...]。"""
+    found = []
+
+    def _add(path, via):
+        if path and os.path.isfile(path) and all(e["path"] != path for e in found):
+            found.append({"path": path, "via": via})
+
+    # 策略 1：环境变量直指
+    for var in ("ARCGIS_PRO_PYTHON", "ARCPY_PYTHON"):
+        _add(os.environ.get(var), "env:%s" % var)
+    # 策略 2：注册表 ESRI\ArcGISPro 的 InstallDir（仅 Windows）
+    try:
+        import winreg
+        for hive, key in ((winreg.HKEY_LOCAL_MACHINE, r"SOFTWARE\ESRI\ArcGISPro"),
+                          (winreg.HKEY_LOCAL_MACHINE, r"SOFTWARE\WOW6432Node\ESRI\ArcGISPro"),
+                          (winreg.HKEY_CURRENT_USER, r"SOFTWARE\ESRI\ArcGISPro")):
+            try:
+                with winreg.OpenKey(hive, key) as k:
+                    install_dir, _ = winreg.QueryValueEx(k, "InstallDir")
+                _add(os.path.join(install_dir, _PRO_PY3_REL), "registry:InstallDir")
+                _add(os.path.join(install_dir, _PROPY_REL), "registry:propy")
+            except Exception:
+                continue
+    except Exception:
+        pass
+    # 策略 3：固定安装路径
+    for base in _FIXED_INSTALL_DIRS:
+        _add(os.path.join(base, _PRO_PY3_REL), "known-path")
+        _add(os.path.join(base, _PROPY_REL), "known-path:propy")
+    # 策略 4：PATH 上的 propy
+    propy = shutil.which("propy")
+    if propy:
+        _add(propy, "PATH:propy")
+    return found
+
+
+def cmd_preflight(args):
+    report = {"ok": True, "action": "preflight", "python": sys.version.split()[0],
+              "interpreter": sys.executable, "checks": {}}
+    try:
+        import arcpy
+        report["checks"]["arcpy_import"] = "ok"
+        report["arcpy_file"] = getattr(arcpy, "__file__", "unknown")
+    except Exception as e:
+        report["checks"]["arcpy_import"] = "fail"
+        return fail("ARCPY_NOT_AVAILABLE",
+                    "当前解释器无法导入 arcpy: %s" % e,
+                    report=report,
+                    python_candidates=_find_pro_pythons(),
+                    hint="请用 ArcGIS Pro 自带 Python（arcgispro-py3 环境）或经 propy 重跑本脚本；"
+                         "不要把 arcpy 装进无关的项目环境")
+    # 安装信息（版本/许可级别）
+    try:
+        info = arcpy.GetInstallInfo()
+        if isinstance(info, dict):
+            report["install"] = {k: info.get(k) for k in
+                                 ("ProductName", "Version", "InstallDir", "LicenseLevel")}
+        report["checks"]["install_info"] = "ok"
+    except Exception as e:
+        report["checks"]["install_info"] = "fail: %s" % e
+    # 产品/许可状态
+    try:
+        report["product_info"] = _safe_str(arcpy.ProductInfo())
+        report["checks"]["product_info"] = "ok"
+    except Exception as e:
+        report["checks"]["product_info"] = "fail: %s" % e
+    # mp 子模块可用性
+    try:
+        from arcpy import mp
+        report["checks"]["mp_module"] = "ok"
+        report["mp_arcgisproject_available"] = hasattr(mp, "ArcGISProject")
+    except Exception as e:
+        report["checks"]["mp_module"] = "fail: %s" % e
+    report["note"] = ("许可最终是否可用以 inspect 能否打开工程为准"
+                      "（打开 .aprx 会触发许可检出）；本预检不打开任何工程文件。")
+    return emit(report)
+
+
+# ------------------------------------------------------------------- backup
+def cmd_backup(args):
+    src = args.project
+    if not os.path.isfile(src):
+        return fail("FILE_NOT_FOUND", "工程文件不存在: %s" % src)
+    stamp = datetime.now().strftime("%Y%m%d-%H%M%S")
+    root, ext = os.path.splitext(src)
+    dst = "%s.bak-%s%s" % (root, stamp, ext)
+    if os.path.exists(dst):
+        return fail("BACKUP_EXISTS", "目标备份已存在，拒绝覆盖: %s" % dst)
+    shutil.copy2(src, dst)
+    entries = [{"kind": "aprx", "source": src, "backup": dst,
+                "bytes": os.path.getsize(dst), "sha256": _sha256_file(dst)}]
+    # 同名 .gdb 文件夹（工程同级、与 .aprx 同名的文件地理数据库）整体复制
+    gdb_src = root + ".gdb"
+    if os.path.isdir(gdb_src):
+        gdb_dst = "%s.bak-%s.gdb" % (root, stamp)
+        if os.path.exists(gdb_dst):
+            return fail("BACKUP_EXISTS", "目标 .gdb 备份已存在，拒绝覆盖: %s" % gdb_dst)
+        shutil.copytree(gdb_src, gdb_dst)
+        manifest = hashlib.sha256()
+        file_count = 0
+        total_bytes = 0
+        for dirpath, _dirnames, filenames in os.walk(gdb_dst):
+            for fn in sorted(filenames):
+                full = os.path.join(dirpath, fn)
+                rel = os.path.relpath(full, gdb_dst).replace(os.sep, "/")
+                manifest.update(rel.encode("utf-8"))
+                manifest.update(_sha256_file(full).encode("ascii"))
+                file_count += 1
+                total_bytes += os.path.getsize(full)
+        entries.append({"kind": "gdb-folder", "source": gdb_src, "backup": gdb_dst,
+                        "file_count": file_count, "total_bytes": total_bytes,
+                        "manifest_sha256": manifest.hexdigest()})
+    return emit({"ok": True, "action": "backup", "source": src,
+                 "entries": entries,
+                 "sha256": entries[0]["sha256"], "backup": dst})
+
+
+# ------------------------------------------------------------------ inspect
+def _layer_entry(layer):
+    entry = {}
+    name, _ = _try_attrs(layer, ["name"])
+    entry["name"] = _safe_str(name)
+    grp, _ = _try_attrs(layer, ["isGroupLayer"])
+    entry["is_group_layer"] = grp if isinstance(grp, bool) else None
+    vis, _ = _try_attrs(layer, ["visible"])
+    entry["visible"] = vis if isinstance(vis, bool) else None
+    broken, _ = _try_attrs(layer, ["isBroken"])
+    entry["is_broken"] = broken if isinstance(broken, bool) else None
+    labels, _ = _try_attrs(layer, ["showLabels"])
+    entry["show_labels"] = labels if isinstance(labels, bool) else None
+    # dataSource 对组图层/部分图层类型会抛错，且 supports() 本身也可能不可用，逐级兜底
+    ds = None
+    ds_via = None
+    supports = getattr(layer, "supports", None)
+    if callable(supports):
+        try:
+            if supports("DATASOURCE"):
+                ds, ds_via = _try_attrs(layer, ["dataSource"])
+        except Exception:
+            ds, ds_via = None, None
+    if ds is None and ds_via is None:
+        ds, ds_via = _try_attrs(layer, ["dataSource"])
+    entry["data_source"] = _safe_str(ds)
+    entry["data_source_via"] = ds_via
+    return entry
+
+
+def _table_entry(table):
+    entry = {}
+    name, _ = _try_attrs(table, ["name"])
+    entry["name"] = _safe_str(name)
+    ds, ds_via = _try_attrs(table, ["dataSource"])
+    entry["data_source"] = _safe_str(ds)
+    entry["data_source_via"] = ds_via
+    broken, _ = _try_attrs(table, ["isBroken"])
+    entry["is_broken"] = broken if isinstance(broken, bool) else None
+    return entry
+
+
+def _open_project(mp, path, notes):
+    """打开 .aprx（传入的已是临时副本路径）。返回 (aprx, via) 或 (None, None)。"""
+    cls = getattr(mp, "ArcGISProject", None)
+    if cls is None:
+        notes.append("arcpy.mp 无 ArcGISProject 类")
+        return None, None
+    try:
+        return cls(path), "arcpy.mp.ArcGISProject(path)"
+    except Exception as e:
+        notes.append("ArcGISProject(path) failed: %s" % e)
+    return None, None
+
+
+def cmd_inspect(args):
+    src = args.project
+    if not os.path.isfile(src):
+        return fail("FILE_NOT_FOUND", "工程文件不存在: %s" % src)
+    try:
+        import arcpy  # noqa: F401  打开工程前先确认 arcpy 在场
+        from arcpy import mp
+    except Exception as e:
+        return fail("ARCPY_NOT_AVAILABLE", "arcpy 导入失败: %s" % e,
+                    python_candidates=_find_pro_pythons())
+    notes = []
+    tmpdir = tempfile.mkdtemp(prefix="arcbridge-")
+    work_copy = os.path.join(tmpdir, os.path.basename(src))
+    shutil.copy2(src, work_copy)
+    # 同名 .gdb 一并复制到临时目录：原件零接触的前提下让相对路径数据源可解析
+    stem = os.path.splitext(os.path.basename(src))[0]
+    gdb_src = os.path.join(os.path.dirname(os.path.abspath(src)), stem + ".gdb")
+    sibling_gdb_copied = False
+    if os.path.isdir(gdb_src):
+        try:
+            shutil.copytree(gdb_src, os.path.join(tmpdir, stem + ".gdb"))
+            sibling_gdb_copied = True
+        except Exception as e:
+            notes.append("sibling .gdb copy failed: %s" % e)
+    try:
+        aprx, open_via = _open_project(mp, work_copy, notes)
+        if aprx is None:
+            return fail("OPEN_PROJECT_FAILED", "打开工程失败（许可不可用或工程损坏时也会在此失败）",
+                        notes=notes, traceback_tail=traceback.format_exc()[-500:])
+        result = {"ok": True, "action": "inspect", "source": src,
+                  "mode": "headless-saved-state",
+                  "mode_note": ("外部进程打开 .aprx 只能看到上次保存到磁盘的状态，"
+                                "看不到 ArcGIS Pro 界面里的未保存修改；"
+                                "图层数据源为工程文件中记录的路径，本结果不代表界面实时状态。"),
+                  "opened_via": open_via, "api_path": {},
+                  "sibling_gdb_copied": sibling_gdb_copied, "notes": notes}
+        fp, _ = _try_attrs(aprx, ["filePath"])
+        result["project_file"] = _safe_str(fp)
+        dgdb, _ = _try_attrs(aprx, ["defaultGeodatabase"])
+        result["default_geodatabase"] = _safe_str(dgdb)
+        # --- maps / layers / tables
+        maps_coll, via = _try_attrs(aprx, ["listMaps"])
+        result["api_path"]["maps"] = via
+        maps_out = []
+        for m in _to_list(maps_coll):
+            if m is None:
+                continue
+            mname, _ = _try_attrs(m, ["name"])
+            mtype, _ = _try_attrs(m, ["mapType"])
+            m_entry = {"name": _safe_str(mname), "map_type": _safe_str(mtype)}
+            layers_coll, lvia = _try_attrs(m, ["listLayers"])
+            result["api_path"]["layers"] = lvia
+            m_entry["layers"] = [_layer_entry(ly) for ly in _to_list(layers_coll)
+                                 if ly is not None]
+            tables_coll, tvia = _try_attrs(m, ["listTables"])
+            result["api_path"]["tables"] = tvia
+            m_entry["tables"] = [_table_entry(t) for t in _to_list(tables_coll)
+                                  if t is not None]
+            maps_out.append(m_entry)
+        result["maps"] = maps_out
+        # --- layouts
+        layouts_coll, via = _try_attrs(aprx, ["listLayouts"])
+        result["api_path"]["layouts"] = via
+        layouts_out = []
+        for lo in _to_list(layouts_coll):
+            if lo is None:
+                continue
+            lname, _ = _try_attrs(lo, ["name"])
+            pw, _ = _try_attrs(lo, ["pageWidth"])
+            ph, _ = _try_attrs(lo, ["pageHeight"])
+            lo_entry = {"name": _safe_str(lname),
+                        "page_width": pw if isinstance(pw, (int, float)) else None,
+                        "page_height": ph if isinstance(ph, (int, float)) else None}
+            frames, fvia = _try_attrs(lo, ["listElements"])
+            # listElements 需要参数，上面的无参调用一般会失败；直接带 MAPFRAME_ELEMENT 再试
+            if frames is None:
+                try:
+                    frames = lo.listElements("MAPFRAME_ELEMENT")
+                    fvia = "listElements(MAPFRAME_ELEMENT)"
+                except Exception:
+                    frames = None
+            lo_entry["map_frames_via"] = fvia
+            lo_entry["map_frame_count"] = len(_to_list(frames)) if frames is not None else None
+            layouts_out.append(lo_entry)
+        result["layouts"] = layouts_out
+        result["notes"] = notes
+        return emit(result)
+    except Exception as e:
+        return fail("INSPECT_FAILED", "盘点失败: %s" % e, notes=notes,
+                    traceback_tail=traceback.format_exc()[-500:])
+    finally:
+        shutil.rmtree(tmpdir, ignore_errors=True)
+
+
+def main():
+    p = argparse.ArgumentParser(prog="arcgis_bridge")
+    sub = p.add_subparsers(dest="cmd", required=True)
+    pp = sub.add_parser("preflight")
+    pp.set_defaults(func=cmd_preflight)
+    bp = sub.add_parser("backup")
+    bp.add_argument("project")
+    bp.set_defaults(func=cmd_backup)
+    ip = sub.add_parser("inspect")
+    ip.add_argument("project")
+    ip.set_defaults(func=cmd_inspect)
+    args = p.parse_args()
+    return args.func(args)
+
+
+if __name__ == "__main__":
+    sys.exit(main())
