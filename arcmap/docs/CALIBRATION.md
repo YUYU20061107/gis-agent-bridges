@@ -121,3 +121,37 @@ SuperMap 包已在 iDesktop 10i 上完成一轮实机校准（文件回退模式
   CWD 只读时须切换目录；本包经审计未发现桥/MCP 往 CWD 写日志或
   临时文件的行为（日志只走 stderr/stdout，临时文件走系统临时目录），
   arcpy 本体在实机上是否往 CWD 写文件仍待观察。
+
+## 2026-10-25 实机校准记录（第一轮：无头桥）
+
+环境：ArcGIS Desktop 10.8（10.8.12790）、`C:\Python27\ArcGIS10.8\python.exe`
+（Python 2.7.16，32-bit）、Windows；无 ArcGIS Pro。
+证据等级：执行方（DSH）实机自报 + 回收代码逐行复核；本记录与
+CHANGELOG-v0.3-lab2.md、SKILL.md「v0.3-lab2 增补」节交叉印证。
+**本轮只覆盖无头桥；实时桥（inapp_bridge 的 CURRENT 接入、后台线程
+COM 行为等）仍未实机校准，上方待校准清单继续有效。**
+
+实机发现与处置（五条）：
+
+1. py2 `emit()` 含中文崩溃（`json.dumps(ensure_ascii=False)` 对 UTF-8
+   字节串抛 UnicodeDecodeError）→ 已修：`_to_text()` 递归转 unicode 后
+   再 dumps 并写 UTF-8 字节；同一隐患已同步修 verify_project.py 与
+   live/inapp_bridge.py 的响应序列化（inapp 侧为预防性修复，未实机复验）。
+2. py2 `sys.argv` 为 GBK 字节串，中文路径被 arcpy 报 ERROR 000732 →
+   已修：`_dec()` 逐级解码；同步修 verify_project.py 的 argv 与
+   probe_api.py 的路径参数。
+3. `Warp_management` 报 ERROR 000735 不可用 → georef 的重采样改走
+   `ProjectRaster_management`（BILINEAR）。
+4. `arcpy.Describe` 在本机大面积残缺（raster `.width/.meanCellWidth`、
+   shp `.spatialReference` 均 AttributeError）→ 替代：GetRasterProperties
+   取行列数、GetCount 取要素数、坐标系读 `.prj`、范围读 `.shp` 文件头。
+5. 无头 `ExportToPNG` 会把 RGB 影像渲成蓝色单色调（未动过的原始 JPG
+   复现，系本机 ArcMap 无头渲染问题、非数据问题）→ 成果图改自绘合成
+   （PIL），不依赖 ExportToPNG 出真彩色；实时桥 export_map_image 在
+   本机同样受此影响，其校准须按此预期验收。
+
+回归基线（lab2 流水线实测）：控制点 7 个，一次多项式 RMS 2.3884 m、
+max 3.6348 m，像元 0.9165×0.9235 m；矢量 5 层（Road 242 段 /
+13922.5 m；Buildings 9 / 3.02 ha；GreenLand 1 / 9.30 ha；Lake 1 /
+2.97 ha；Liyuan 4 / 3.90 ha），全部 `.prj` = GCS_WGS_1984，
+features_written == features_counted。

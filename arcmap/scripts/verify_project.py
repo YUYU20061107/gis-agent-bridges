@@ -45,11 +45,55 @@ def _safe_str(v):
         return None
 
 
+try:
+    _TEXT = unicode  # noqa: F821  Python 2.7
+except NameError:
+    _TEXT = str
+
+
+def _dec(b):
+    """bytes→unicode：UTF-8 → 文件系统编码 → mbcs/gbk → latin-1 逐级尝试。"""
+    if isinstance(b, _TEXT):
+        return b
+    for enc in ("utf-8", None, "mbcs", "gbk", "latin-1"):
+        try:
+            if enc is None:
+                enc = sys.getfilesystemencoding()
+                if not enc:
+                    continue
+            return b.decode(enc)
+        except Exception:
+            continue
+    return b.decode("latin-1", "replace")
+
+
+def _to_text(obj):
+    """递归把 bytes 解成 unicode，保证 py2 下 json.dumps 不会因混类型崩。"""
+    if isinstance(obj, dict):
+        return dict((_to_text(k), _to_text(v)) for k, v in obj.items())
+    if isinstance(obj, (list, tuple)):
+        return [_to_text(v) for v in obj]
+    if isinstance(obj, _TEXT):
+        return obj
+    if isinstance(obj, (bytes, bytearray)):
+        return _dec(obj)
+    return obj
+
 def emit(obj, exit_code=0):
-    text = json.dumps(obj, ensure_ascii=False, indent=1)
+    obj = _to_text(obj)
     try:
-        sys.stdout.write(text + "\n")
-        sys.stdout.flush()
+        text = json.dumps(obj, ensure_ascii=False, indent=1)
+    except Exception:
+        text = json.dumps(obj, ensure_ascii=True, indent=1)
+    data = text.encode("utf-8") if isinstance(text, _TEXT) else text
+    buf = getattr(sys.stdout, "buffer", None)
+    try:
+        if buf is not None:  # Python 3
+            buf.write(data + b"\n")
+            buf.flush()
+        else:  # Python 2：写 UTF-8 字节，避免 GBK 控制台编码异常
+            sys.stdout.write(data + b"\n")
+            sys.stdout.flush()
     except Exception:
         try:
             sys.stdout.write(json.dumps(obj, ensure_ascii=True, indent=1) + "\n")
@@ -188,6 +232,7 @@ def _inventory(arcpy, path):
 
 
 def main():
+    sys.argv = [_dec(a) if isinstance(a, bytes) else a for a in sys.argv]  # py2 下 argv 是 GBK 字节串，先解码再解析
     ap = argparse.ArgumentParser(prog="verify_project")
     ap.add_argument("project", help=".mxd 地图文档路径")
     ap.add_argument("--copy-to", default=None,
@@ -243,7 +288,7 @@ def main():
         try:
             import io
             with io.open(args.json_out, "w", encoding="utf-8") as f:
-                f.write(json.dumps(out, ensure_ascii=False, indent=1))
+                f.write(json.dumps(_to_text(out), ensure_ascii=False, indent=1))
         except Exception as e:
             return _fail("JSON_OUT_FAILED", "写 json-out 失败: %s" % e)
     return code

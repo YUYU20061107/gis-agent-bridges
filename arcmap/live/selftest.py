@@ -3,7 +3,7 @@
 selftest.py — 实时桥一键自检（纯标准库 Python 3，无需 ArcMap）
 
 在本机启动 inapp_bridge.py 与 mcp_server.py 两个子进程，自动检查六项：
-  1) initialize        —— MCP 握手与 serverInfo（版本应为 0.2.x）
+  1) initialize        —— MCP 握手与 serverInfo（版本应为 0.3.x）
   2) tools/list        —— 10 个 arcmap_* 工具齐全
   3) tools/call ping   —— 经桥转发并拿到 pong
   4) tools/call discover —— 无 ArcMap 时也应结构化回报（document_found=false 即合格）
@@ -166,7 +166,7 @@ def main():
                 "clientInfo": {"name": "selftest", "version": "0"}})
             info = (resp.get("result") or {}).get("serverInfo") or {}
             ok = info.get("name") == "arcmap-live-bridge" and \
-                str(info.get("version", "")).startswith("0.2")
+                str(info.get("version", "")).startswith("0.3")
             report("1-initialize", ok, "serverInfo=%s" % info)
             client.notify("notifications/initialized")
         except Exception as e:

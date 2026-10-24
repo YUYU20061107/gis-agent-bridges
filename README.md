@@ -22,7 +22,7 @@ live in-app MCP bridge — all in one repo for easy reuse.
 |---|---|---|---|---|
 | SuperMap iDesktopX | `supermap/` | 实时＋无头 | 13 | v0.4 · 文件回退模式已实机校准（iDesktop 10i，13/13）；iDesktopX 实时待验证；v0.4 增补工程文件生产手册、三维场景资产与验收脚本 |
 | ArcGIS Pro | `arcgis-pro/` | 实时＋无头 | 13 | v0.2 · 已对齐 SuperMap 校准通用升级（selftest 线程读、token 文件环境变量、verify_project 盘点脚本、ENGINEERING-PLAYBOOK）、未实机校准 |
-| ArcMap（Esri 已退役，个人自用向） | `arcmap/` | 实时＋无头 | 10 | v0.2 · 已对齐 SuperMap 校准通用升级（selftest 线程读、token 文件环境变量、verify_project 盘点脚本、ENGINEERING-PLAYBOOK）、Python 2.7 待实机验证、未实机校准 |
+| ArcMap（Esri 已退役，个人自用向） | `arcmap/` | 实时＋无头 | 10＋无头 6 动作 | v0.3 · 无头桥已实机校准（Desktop 10.8 / Python 2.7.16，2026-10-25；三只读＋三受控写、py2 编码两坑已修）；实时桥未实机校准 |
 | QGIS | `qgis/` | 实时＋无头 | 12 | v0.2 · 已对齐 SuperMap 校准通用升级（selftest 线程读、token 文件环境变量、verify_project 盘点脚本、ENGINEERING-PLAYBOOK）、未实机校准 |
 | GeoScene Pro（易智瑞） | `geoscene/` | 实时＋无头（ArcGIS Pro 同源衍生） | 13 | v0.2 · 已对齐 SuperMap 校准通用升级（selftest 线程读、token 文件环境变量、verify_project 盘点脚本、ENGINEERING-PLAYBOOK）、兼容性待实机核验、未实机校准 |
 | MapGIS（中地数码） | `mapgis/` | 探针＋无头骨架 | 3 | 探索版 v0.2 · 已对齐 SuperMap 校准通用升级（selftest 线程读、token 文件环境变量、verify_project 盘点脚本、ENGINEERING-PLAYBOOK）、实时接口未证实、未实机校准 |

@@ -29,22 +29,30 @@
   ARCMAP_BRIDGE_TOKEN_FILE 覆盖；新增只读盘点/迁移验收脚本
   scripts/verify_project.py 与 ENGINEERING-PLAYBOOK.md；工具清单、
   端口与安全闸不变，仍未实机验证（迁移说明见 docs/CALIBRATION.md）。
-- **未实机验证**：本包在无 ArcMap 的环境里验证了脚本语法、协议自检
-  6/6 PASS、backup 真复制 + sha256、无 arcpy 时的报错 JSON 与退出码；
-  arcpy 实机路径（尤其 Python 2.7 窗口内行为）**待在真实 ArcMap 上校准**，
-  顺序见 [docs/CALIBRATION.md](docs/CALIBRATION.md)。
+- **v0.3（2026-10-25）**：由 lab2 实机魔改版回灌——修复 py2 下 emit()
+  含中文崩溃与 sys.argv GBK 路径乱码两个实机坑（并同步到
+  verify_project.py / probe_api.py / inapp_bridge.py）；无头桥新增三个
+  受控写动作（georef / mkvector / buildmxd，均须 --confirm-write、
+  禁覆盖原件）；serverInfo 升 0.3.0。
+- **实机校准状态（2026-10-25）**：无头桥已在 ArcGIS Desktop 10.8 /
+  Python 2.7.16 实机跑通（含三个受控写动作），详见
+  [docs/CALIBRATION.md](docs/CALIBRATION.md) 的校准记录；**实时桥仍未
+  在真实 ArcMap 窗口内校准**，其 2.7 窗口内行为仍属未知，勿冒充已验。
 
 ## 两种模式
 
 ### 无头桥（headless）
 
-外部脚本操作 .mxd 文件，适合盘点与备份。三件动作全部只读或只读原件：
+外部脚本操作 .mxd 文件。三件只读动作 + 三件受控写动作（写动作须 --confirm-write、只写新路径、与源同目录时拒绝执行）：
 
 | 动作 | 说明 |
 |---|---|
 | `preflight` | 环境预检：多策略定位 Desktop 的 Python/arcpy，回报候选路径与版本 |
 | `backup` | 给 .mxd 生成带时间戳的备份副本并回报 sha256；同名 .gdb 文件夹一并整体复制 |
 | `inspect` | 工程盘点：先复制到临时目录再打开（原件零接触），输出数据框/图层/表视图 JSON，标注 headless-saved-state |
+| `georef` | 一次多项式（仿射）配准：控制点解系数/残差 + world file，可选重采样纠正（受控写） |
+| `mkvector` | 按 JSON 规格生成 shapefile，回报写入数/计数双校验（受控写） |
+| `buildmxd` | 套模板组装 .mxd（先 saveACopy 再改），可选导出布局图（受控写） |
 
 另有校准探针 `scripts/probe_api.py`：首次部署或版本变更时运行一次，
 输出本机 arcpy 版本、`arcpy.mapping` 关键函数清单，以及
@@ -139,10 +147,11 @@ AI Agent / MCP 客户端经一个纯标准库的 stdio MCP 服务端（Python 3�
 | arcmap_zoom_to_layer | 数据框视图缩放到图层范围并刷新 | 视图级 |
 | arcmap_save_document | 保存当前文档（须 confirm=true） | **写** |
 
-### 无头桥（3 个动作）
+### 无头桥（6 个动作）
 
 `preflight`（只读）、`backup`（只读原件，生成副本）、`inspect`（只读，
-操作的是临时副本）。无头桥不包含任何写业务动作。
+操作的是临时副本）；`georef` / `mkvector` / `buildmxd`（受控写：必须
+--confirm-write，只写调用方给出的新路径，禁止覆盖原件）。
 
 ## 安全模型
 
@@ -175,7 +184,7 @@ arcmap-bridge-lite/
 │   └── CALIBRATION.md      实机校准指南（顺序、验收标准、回报格式、红线）
 ├── ENGINEERING-PLAYBOOK.md 工程文件生产手册（副本纪律、写后重读验证、迁移验收）
 ├── scripts/
-│   ├── arcmap_bridge.py    无头桥脚本（preflight / backup / inspect，单行 JSON 输出）
+│   ├── arcmap_bridge.py    无头桥脚本（preflight / backup / inspect / georef / mkvector / buildmxd，单行 JSON 输出）
 │   ├── verify_project.py   只读盘点/迁移验收（--copy-to 复制后对副本重开盘点）
 │   └── probe_api.py        校准探针，输出本机 arcpy 版本与关键函数清单
 └── live/

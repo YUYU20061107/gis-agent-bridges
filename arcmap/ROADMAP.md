@@ -4,13 +4,14 @@
 
 ArcMap 已于 2026-03-01 被 Esri 退役（10.8.2 为最终版本）。本包是给
 存量 ArcMap 用户的个人自用轻量版：范围刻意收窄，不做系列门面，
-不规划功能扩张；后续只做实机校准收紧与缺陷修复。主力平台的新功能
+功能面以已实机校准的动作为限；后续只做实机校准收紧与缺陷修复。主力平台的新功能
 请看 ArcGIS Pro 方向，不要往这个包里加。
 
 ## 版本
 
 | 版本 | 内容 | 状态 |
 |---|---|---|
+| v0.3 | 由 lab2 实机魔改版（Desktop 10.8 / Python 2.7.16 跑通）回灌：修复 py2 emit() 中文崩溃与 sys.argv GBK 路径乱码（同类隐患同步修 verify_project / probe_api / inapp_bridge）；无头桥新增三个受控写动作 georef / mkvector / buildmxd（--confirm-write 闸、禁覆盖原件、写后计数校验）；SKILL/CALIBRATION 同步五条实机发现；serverInfo 升 0.3.0 | 无头桥**已实机校准**（证据见 docs/CALIBRATION.md 2026-10-25 记录与 CHANGELOG-v0.3-lab2.md）；**实时桥仍未实机校准**（待校准清单保留，其中第 1 项的无头脚本部分已由本轮覆盖） |
 | v0.2 | selftest 改后台线程 + 队列读行（修 Windows select 等管道问题）；token 文件位置支持 ARCMAP_BRIDGE_TOKEN_FILE 环境变量覆盖（桥/MCP/selftest 三处一致）；新增 scripts/verify_project.py 只读盘点/迁移验收与 ENGINEERING-PLAYBOOK.md；serverInfo 版本升 0.2.0；工具清单（10 个）、端口 47617、confirm 闸与 BAD_TOKEN 语义不变 | VM 侧已验证：py_compile 全过、selftest 6/6 PASS、verify_project.py 无 arcpy 时结构化报错 + 退出码 1；**arcpy 实机路径仍未验证**，迁移口径见 docs/CALIBRATION.md 新增一节 |
 | v0.1 | 无头桥三件只读动作（preflight 多策略定位 Desktop Python/arcpy、backup 含同名 .gdb 整体复制 + sha256、inspect 复制到临时目录盘点并标注 headless-saved-state）；校准探针 probe_api.py；实时桥：inapp_bridge.py 跑在 ArcMap Python 窗口内（Python 2.7/3.x 兼容子集，127.0.0.1:47617 + token + 文档多策略发现），mcp_server.py 为 Python 3 纯标准库 stdio 转发；10 个工具（6 只读 + 1 只读出文件 + 2 视图级 + 1 写类 confirm 闸）；一键自检 live/selftest.py | VM 侧（无 ArcMap）已验证：全部脚本 py_compile 通过；selftest 6/6 PASS（initialize / tools-list=10 / ping / discover 结构化回报 / 保存闸门 / 错误 token）；无头 preflight/inspect 在无 arcpy 时结构化报错 + 退出码 1；backup 用样例 .mxd 实测真复制 + sha256 一致、同名 .gdb 文件夹整体复制计数正确；**arcpy 实机路径与 Python 2.7 运行时未验证**，按 docs/CALIBRATION.md 校准 |
 
@@ -42,6 +43,6 @@ ArcMap 已于 2026-03-01 被 Esri 退役（10.8.2 为最终版本）。本包是
 
 ## 不做的事项（明确排除，防范围蔓延）
 
-- 不做图层增删、符号系统修改、地理处理工具调用等写业务动作。
+- 不做图层增删、符号系统修改；无头桥写动作以 v0.3 三个受控写（georef / mkvector / buildmxd）为限，其余地理处理类写业务不做。
 - 不做 ArcMap 的 .NET Add-in 路线（成本与收益不匹配一个退役平台）。
 - 不追求多版本 Desktop 兼容矩阵；以校准机器的版本为准并注明。

@@ -61,6 +61,40 @@ except NameError:
     _text = str
 
 
+try:
+    _TEXT = unicode  # noqa: F821  Python 2.7
+except NameError:
+    _TEXT = str
+
+
+def _dec(b):
+    """bytes→unicode：UTF-8 → 文件系统编码 → mbcs/gbk → latin-1 逐级尝试。"""
+    if isinstance(b, _TEXT):
+        return b
+    for enc in ("utf-8", None, "mbcs", "gbk", "latin-1"):
+        try:
+            if enc is None:
+                enc = sys.getfilesystemencoding()
+                if not enc:
+                    continue
+            return b.decode(enc)
+        except Exception:
+            continue
+    return b.decode("latin-1", "replace")
+
+
+def _to_text(obj):
+    """递归把 bytes 解成 unicode，保证 py2 下 json.dumps 不会因混类型崩。"""
+    if isinstance(obj, dict):
+        return dict((_to_text(k), _to_text(v)) for k, v in obj.items())
+    if isinstance(obj, (list, tuple)):
+        return [_to_text(v) for v in obj]
+    if isinstance(obj, _TEXT):
+        return obj
+    if isinstance(obj, (bytes, bytearray)):
+        return _dec(obj)
+    return obj
+
 def _safe_str(v):
     if v is None:
         return None
@@ -506,7 +540,7 @@ def serve():
                 resp = {"ok": False, "error": "BAD_JSON: %s" % e}
             else:
                 resp = handle_request(req)
-            payload = json.dumps(resp, ensure_ascii=False)
+            payload = json.dumps(_to_text(resp), ensure_ascii=False)
             if not isinstance(payload, bytes):
                 payload = payload.encode("utf-8")
             conn.sendall(payload + b"\n")

@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-mcp_server.py — MCP 服务端（stdio，纯标准库，Python 3，v0.2）
+mcp_server.py — MCP 服务端（stdio，纯标准库，Python 3，v0.3）
 
 把 MCP 工具调用转发到 ArcMap 内的应用内桥（inapp_bridge.py，
 127.0.0.1:47617）。本服务端跑在 ArcMap 进程之外，用任意 Python 3 即可，
@@ -11,7 +11,7 @@ mcp_server.py — MCP 服务端（stdio，纯标准库，Python 3，v0.2）
         arcmap_export_map_image
   视图级（只改显示、可逆）：arcmap_set_layer_visible / arcmap_zoom_to_layer
   写类（须 confirm=true）：arcmap_save_document
-v0.2 未在真实 ArcMap 上验证（ArcMap 自带 Python 2.7，桥侧在实机窗口内的
+实时桥本身未在真实 ArcMap 窗口内验证（无头桥已于 2026-10-25 在 Desktop 10.8 / Python 2.7.16 实机校准）（ArcMap 自带 Python 2.7，桥侧在实机窗口内的
 行为属校准事项）；桥侧调不通时会返回结构化错误，Agent 必须如实回报，
 不许把错误说成成功。
 
@@ -109,7 +109,7 @@ def handle(msg):
         return {"jsonrpc": "2.0", "id": mid, "result": {
             "protocolVersion": PROTOCOL_VERSION,
             "capabilities": {"tools": {}},
-            "serverInfo": {"name": "arcmap-live-bridge", "version": "0.2.0"}}}
+            "serverInfo": {"name": "arcmap-live-bridge", "version": "0.3.0"}}}
     if method in ("notifications/initialized", "notifications/cancelled"):
         return None
     if method == "ping":

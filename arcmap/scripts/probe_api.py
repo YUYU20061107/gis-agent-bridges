@@ -28,6 +28,23 @@ def _u(v):
         return repr(v)
 
 
+def _dec(b):
+    """bytes→unicode：UTF-8 → 文件系统编码 → mbcs/gbk → latin-1 逐级尝试
+    （py2 下 sys.argv 是 GBK 字节串，中文路径不解码会被解成乱码）。"""
+    if isinstance(b, _text):
+        return b
+    for enc in ("utf-8", None, "mbcs", "gbk", "latin-1"):
+        try:
+            if enc is None:
+                enc = sys.getfilesystemencoding()
+                if not enc:
+                    continue
+            return b.decode(enc)
+        except Exception:
+            continue
+    return b.decode("latin-1", "replace")
+
+
 def out(text=""):
     line = _u(text) + "\n"
     try:
@@ -78,7 +95,7 @@ def main():
     except Exception as e:
         out("  CURRENT unavailable in this process: %s" % e)
     if len(sys.argv) > 1:
-        path = sys.argv[1]
+        path = _dec(sys.argv[1])
         out("=" * 60)
         out("MXD PROBE: %s" % path)
         try:

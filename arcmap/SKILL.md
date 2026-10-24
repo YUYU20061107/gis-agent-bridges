@@ -23,9 +23,11 @@
 2. 实时桥的 MCP 服务端用任意 Python 3 即可（它只做转发，不需要 arcpy）。
 3. 运行预检（见下），预检不过不许进入任何业务动作。
 
-## 动作清单（无头桥，仅此三项）
+## 动作清单（无头桥）
 
 所有动作通过桥接脚本执行，脚本输出单行 JSON，必须原样附在回报里。
+v0.2 基线为三项只读动作（preflight / backup / inspect）；v0.3-lab2 增加三个
+**受控写动作**（georef / mkvector / buildmxd），见下方「v0.3-lab2 增补」。
 
 ### 1) preflight —— 环境预检（只读，无副作用）
 ```
@@ -70,6 +72,61 @@ v0.2 新增只读盘点/迁移验收脚本 scripts/verify_project.py（盘点 .m
 重开盘点，问题记入 issues；无 arcpy 时结构化报错 ARCPY_NOT_AVAILABLE），
 以及 ENGINEERING-PLAYBOOK.md 工程手册；无头桥三件动作与实时桥工具清单不变。
 
+## v0.3-lab2 增补（受控写动作 + py2 两个坑，2026-10-25 实机验证）
+
+安装位置：`<DSH skills 目录>\arcmap-bridge-lite\`，解释器
+`C:\Python27\ArcGIS10.8\python.exe`。v0.3-lab2 在原三项只读动作之外新增三个写动作，
+每个写动作都必须显式带 `--confirm-write`，否则只做计算与试运行、不落盘。
+写动作的输出目录由调用方给定，脚本本身不删除任何已存在文件。
+
+### 4) georef —— 一次多项式（仿射）配准 + 落盘
+```
+"...\python.exe" scripts/arcmap_bridge.py georef --image <影像> --points <控制点 json> \
+    --out <输出目录> [--sr 4326] [--rectify] --confirm-write
+```
+控制点 json 形如 `{"pairs":[{"id":1,"pixel":[col,row],"map":[lon,lat]}, ...]}`。
+纯 Python 解 6 个未知数（不依赖 numpy），输出 `coef_x{a0,a1,a2}`/`coef_y{b0,b1,b2}`、
+逐点 `error_m`、`rms_m`、`max_m`、`pixel_size_m`，写 `.jgw` world file、
+`<名>_geo.jpg`、`<名>_geo.tif`（含 34264 旋转项）、`--rectify` 时再出
+`<名>_rectify.tif`（北向对齐，BILINEAR 重采样），并回报每个文件的字节数。
+
+### 5) mkvector —— 由 JSON 生成 shapefile
+```
+"...\python.exe" scripts/arcmap_bridge.py mkvector --spec <图层 json> --out <输出目录> --confirm-write
+```
+spec 结构：`{spatial_reference, layers:[{name, geometry(Polyline|Polygon), fields,
+features:[{coords:[[x,y],...], attrs:{...}}]}]}`；每层回写
+`features_written`/`features_counted`（两者必须相等才可信）与 `.shp/.dbf` 字节数。
+
+### 6) buildmxd —— 套模板组装 .mxd 并导出布局图
+```
+"...\python.exe" scripts/arcmap_bridge.py buildmxd --template <.mxd 模板> --layers a,b,c \
+    --out <.mxd> [--extent xmin,ymin,xmax,ymax] [--export-png <png>] [--dpi 100] --confirm-write
+```
+先 `saveACopy` 到新路径再改，回报每层 `is_broken`、`scale`、输出字节数。
+
+### 本机校准发现（照抄进任何新会话的回报里）
+1. **py2 `emit()` 崩溃**：内容含中文时 `json.dumps(..., ensure_ascii=False)` 抛
+   `UnicodeDecodeError: 'ascii' codec can't decode byte 0xef`。已修为
+   `_to_text()` 递归转 unicode → `dumps(ensure_ascii=False).encode('utf-8')` →
+   优先 `sys.stdout.buffer`，py2 写 bytes，全失败退回 `ensure_ascii=True`。
+2. **py2 `sys.argv` 是 GBK 字节串**（不是 UTF-8）：按 UTF-8 解码会把中文路径解成乱码，
+   arcpy 随后报 `ERROR 000732: Input Dataset or Feature Class ... does not exist`。
+   已加 `_dec()`（UTF-8 → `sys.getfilesystemencoding()`/mbcs/gbk → latin-1 逐级尝试）。
+3. **`Warp_management` 在本机不可用**：控制器点参数无论怎么写都报
+   `ERROR 000735: Source Control Points: Value is required`。改用
+   `ProjectRaster_management(<geo.jpg>, <out.tif>, sr, "BILINEAR")` 得到北向对齐结果。
+4. **`arcpy.Describe` 在本机大面积残缺**：`Describe(raster).width/.meanCellWidth` 抛
+   `AttributeError: DescribeData: Method width does not exist`，`Describe(shp).spatialReference`
+   同样抛 `Method spatialReference does not exist`。替代做法：栅格行列数用
+   `arcpy.GetRasterProperties_management(path, "COLUMNCOUNT"/"ROWCOUNT")`；矢量要素数用
+   `arcpy.GetCount_management`；坐标系读 `.prj` 文本；范围读 `.shp` 文件头
+   （偏移 32 起 shapeType<int，36 起 XMin/YMin/XMax/YMax 四个 <d 双精度）。
+5. **无头 `arcpy.mapping.ExportToPNG` 会把 RGB 影像渲成蓝色单色调**
+   （示例像素 (12,16,82)），用未动过的原始 JPG 复现同样现象 → 与本 Skill 无关，
+   是本机 ArcMap 无头渲染的问题。**报告/成果图不要依赖 ExportToPNG 出真彩色**，
+   改用自绘合成（PIL/Matplotlib），并如实向用户说明这一点。
+
 ## 实时桥（一句话）
 
 实时桥是另一条线：桥脚本在 ArcMap 的 Python 窗口里运行，MCP 工具清单与
@@ -80,9 +137,10 @@ v0.2 新增只读盘点/迁移验收脚本 scripts/verify_project.py（盘点 .m
 
 1. **原件只读**：禁止对用户指定的原始 .mxd 执行任何 save / 写入 / 删除动作。
    需要修改时，先 backup，再复制出一份工作副本，只改副本，并在回报中写明副本路径。
-2. **禁止删除**任何图层、数据框、表；禁止批量改属性数据。无头桥没有写动作，
-   遇到需要写的需求，停下回报，不要临时写脚本凑；实时桥的保存只走
-   save_document 且必须经用户当场同意。
+2. **禁止删除**任何图层、数据框、表；禁止批量改属性数据。无头桥的写动作只有
+   georef / mkvector / buildmxd 三个，且必须带 `--confirm-write`、必须写在用户给出的
+   新路径下（不许覆盖原件）；这三个动作之外的写需求，停下回报，不要临时写脚本凑；
+   实时桥的保存只走 save_document 且必须经用户当场同意。
 3. **GUI 占用**：若 .mxd 正在 ArcMap 中打开，无头 inspect 操作的是临时副本
    不受影响，但回报必须说明盘点结果是已保存状态、可能落后于界面。
 4. **许可/版本错误即停**：arcpy 导入触发许可校验，许可报错、版本不匹配时
