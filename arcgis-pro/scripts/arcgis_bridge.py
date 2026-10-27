@@ -382,7 +382,8 @@ def _table_entry(table):
 
 
 def _open_project(mp, path, notes):
-    """打开 .aprx（传入的已是临时副本路径）。返回 (aprx, via) 或 (None, None)。"""
+    """打开 .aprx（传入的是待打开路径：默认临时副本，--no-copy 时为原件）。
+    返回 (aprx, via) 或 (None, None)。"""
     cls = getattr(mp, "ArcGISProject", None)
     if cls is None:
         notes.append("arcpy.mp 无 ArcGISProject 类")
@@ -405,19 +406,33 @@ def cmd_inspect(args):
         return fail("ARCPY_NOT_AVAILABLE", "arcpy 导入失败: %s" % e,
                     python_candidates=_find_pro_pythons())
     notes = []
-    tmpdir = tempfile.mkdtemp(prefix="arcbridge-")
-    work_copy = os.path.join(tmpdir, os.path.basename(src))
-    shutil.copy2(src, work_copy)
-    # 同名 .gdb 一并复制到临时目录：原件零接触的前提下让相对路径数据源可解析
-    stem = os.path.splitext(os.path.basename(src))[0]
-    gdb_src = os.path.join(os.path.dirname(os.path.abspath(src)), stem + ".gdb")
+    # --no-copy：直接只读打开原件，拿真实数据源解析结果。默认仍是复制到临时目录，
+    # 因为复制模式下 is_broken 会因「数据源没有随迁」而失真，只能反映
+    # 「相对临时目录能否解析」，不足以判断真实断链。
+    no_copy = bool(getattr(args, "no_copy", False))
+    tmpdir = None
     sibling_gdb_copied = False
-    if os.path.isdir(gdb_src):
-        try:
-            shutil.copytree(gdb_src, os.path.join(tmpdir, stem + ".gdb"))
-            sibling_gdb_copied = True
-        except Exception as e:
-            notes.append("sibling .gdb copy failed: %s" % e)
+    if no_copy:
+        work_copy = src
+        copy_mode = "original"
+        notes.append("no-copy: 直接只读打开原件，图层 is_broken 反映真实数据源状态；"
+                     "本动作不写入、不移动原件")
+    else:
+        tmpdir = tempfile.mkdtemp(prefix="arcbridge-")
+        work_copy = os.path.join(tmpdir, os.path.basename(src))
+        shutil.copy2(src, work_copy)
+        copy_mode = "temp-copy"
+        notes.append("temp-copy: 工程已复制到临时目录后打开，is_broken=true 可能仅因数据源"
+                     "未随迁导致；要判断真实断链请加 --no-copy 复核")
+        # 同名 .gdb 一并复制到临时目录：原件零接触的前提下让相对路径数据源可解析
+        stem = os.path.splitext(os.path.basename(src))[0]
+        gdb_src = os.path.join(os.path.dirname(os.path.abspath(src)), stem + ".gdb")
+        if os.path.isdir(gdb_src):
+            try:
+                shutil.copytree(gdb_src, os.path.join(tmpdir, stem + ".gdb"))
+                sibling_gdb_copied = True
+            except Exception as e:
+                notes.append("sibling .gdb copy failed: %s" % e)
     try:
         aprx, open_via = _open_project(mp, work_copy, notes)
         if aprx is None:
@@ -425,6 +440,7 @@ def cmd_inspect(args):
                         notes=notes, traceback_tail=traceback.format_exc()[-500:])
         result = {"ok": True, "action": "inspect", "source": src,
                   "mode": "headless-saved-state",
+                  "copy_mode": copy_mode,
                   "mode_note": ("外部进程打开 .aprx 只能看到上次保存到磁盘的状态，"
                                 "看不到 ArcGIS Pro 界面里的未保存修改；"
                                 "图层数据源为工程文件中记录的路径，本结果不代表界面实时状态。"),
@@ -485,7 +501,8 @@ def cmd_inspect(args):
         return fail("INSPECT_FAILED", "盘点失败: %s" % e, notes=notes,
                     traceback_tail=traceback.format_exc()[-500:])
     finally:
-        shutil.rmtree(tmpdir, ignore_errors=True)
+        if tmpdir:
+            shutil.rmtree(tmpdir, ignore_errors=True)
 
 
 def main():
@@ -498,6 +515,9 @@ def main():
     bp.set_defaults(func=cmd_backup)
     ip = sub.add_parser("inspect")
     ip.add_argument("project")
+    ip.add_argument("--no-copy", action="store_true",
+                    default=False,
+                    help="直接只读打开原件（不复制到临时目录），用于拿真实 is_broken；")
     ip.set_defaults(func=cmd_inspect)
     args = p.parse_args()
     _pg_err = _path_guard(args)

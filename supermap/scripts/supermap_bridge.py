@@ -445,6 +445,9 @@ def cmd_inspect(args):
     work_copy = os.path.join(tmpdir, os.path.basename(src))
     shutil.copy2(src, work_copy)
     _copy_sidecar_datasources(src, tmpdir, notes)
+    notes.append("temp-copy: 本次盘点在临时副本上打开工作空间，已连带复制同目录及一级"
+                 "子目录内的数据源文件（.udb/.udbx/.udd）以解析相对路径；该范围之外的"
+                 "数据源（如数据库型/服务型连接）不在副本内，其状态以工作空间记录为准")
     ws = None
     try:
         ws, strategy = _open_workspace(iobjectspy, work_copy, notes)
@@ -452,6 +455,7 @@ def cmd_inspect(args):
             return fail("OPEN_WORKSPACE_FAILED", "全部打开策略均失败", notes=notes,
                         traceback_tail=traceback.format_exc()[-500:])
         result = {"ok": True, "action": "inspect", "source": src,
+                  "copy_mode": "temp-copy(+sidecar-datasources)",
                   "opened_via": strategy, "api_path": {}, "notes": notes}
         # --- datasources
         coll, via = _try_attrs(ws, ["get_datasources", "datasources"])

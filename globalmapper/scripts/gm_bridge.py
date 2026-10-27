@@ -472,6 +472,7 @@ def cmd_inspect(args):
             # 同名数据一并复制到临时目录，尽量让相对引用在副本处可解析
             src_dir = os.path.dirname(os.path.abspath(src))
             stem = os.path.splitext(os.path.basename(src))[0]
+            copied_siblings = []
             try:
                 for name in os.listdir(src_dir):
                     if name == os.path.basename(src):
@@ -479,9 +480,22 @@ def cmd_inspect(args):
                     full = os.path.join(src_dir, name)
                     if os.path.isfile(full) and os.path.splitext(name)[0] == stem:
                         shutil.copy2(full, os.path.join(tmpdir, name))
+                        copied_siblings.append(name)
             except Exception:
                 pass
             result = _inspect_via_module(mod, work_copy, notes)
+            if result is not None:
+                # 诚实标注：本次枚举来自临时副本，副本只含工作区文件与同名文件；
+                # complete 语义不变（仍指已加载图层的枚举完整），依据见 complete_basis。
+                result["copy_mode"] = "temp-copy(workspace+same-stem-only)"
+                result["complete_basis"] = (
+                    "图层枚举来自临时副本上的模块加载结果；副本只含工作区文件与同名文件"
+                    "（已随迁: %s），工作区引用了其它文件/子目录数据的图层可能未能加载"
+                    "而缺席，complete 仅指已加载图层的枚举完整"
+                    % (", ".join(copied_siblings) if copied_siblings else "无"))
+                notes.append("temp-copy: 本次盘点在临时副本上进行，只复制了工作区文件与同名"
+                             "文件；工作区引用的其它数据文件未随迁，相关图层可能缺席，"
+                             "图层完整性受此限")
         except Exception as e:
             notes.append("module inspect failed: %s" % e)
             result = None

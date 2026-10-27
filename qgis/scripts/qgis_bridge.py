@@ -458,9 +458,18 @@ def cmd_inspect(args):
     if os.path.splitext(src)[1].lower() not in (".qgs", ".qgz"):
         return fail("UNSUPPORTED_FORMAT", "仅支持 .qgs / .qgz 工程文件: %s" % src)
     notes = []
-    tmpdir = tempfile.mkdtemp(prefix="qgisbridge-")
-    work_copy = os.path.join(tmpdir, os.path.basename(src))
-    shutil.copy2(src, work_copy)
+    # --no-copy：直接只读打开原件，拿真实数据源解析结果。默认仍是复制到临时目录，
+    # 因为 qgis 策略下复制模式的图层 valid 会按「相对临时目录」解析相对路径而失真。
+    # parse 策略只读工程 XML 原文，不做实际打开解析，复制与否不影响其结果。
+    no_copy = bool(getattr(args, "no_copy", False))
+    tmpdir = None
+    work_copy = src
+    copy_mode = "original"
+    if not no_copy:
+        tmpdir = tempfile.mkdtemp(prefix="qgisbridge-")
+        work_copy = os.path.join(tmpdir, os.path.basename(src))
+        shutil.copy2(src, work_copy)
+        copy_mode = "temp-copy"
     try:
         strategy = args.strategy
         qgis_ok = False
@@ -472,18 +481,30 @@ def cmd_inspect(args):
         if strategy == "parse" or (strategy == "auto" and not qgis_ok):
             result = _inspect_parse(src, work_copy, notes)
             mode, via = "headless-file-parse", "xml.etree(.qgs/.qgz member)"
+            out_copy_mode = copy_mode + "(parse-only)"
+            notes.append("parse: 仅解析工程文件 XML，数据源按文件记录原样回报、未做实际"
+                         "打开解析，复制与否不影响结果")
         else:
             result = _inspect_qgis(src, work_copy, notes)
             mode, via = "headless-qgis", "QgsApplication+QgsProject.read"
+            out_copy_mode = copy_mode
+            if no_copy:
+                notes.append("no-copy: 直接只读打开原件，图层 valid 反映真实数据源状态；"
+                             "本动作不写入、不移动原件")
+            else:
+                notes.append("temp-copy: 工程已复制到临时目录后打开，图层 valid 按临时目录"
+                             "解析相对路径，可能失真；要判断真实有效性请加 --no-copy 复核")
         out = {"ok": True, "action": "inspect", "source": src,
-               "mode": mode, "opened_via": via, "notes": notes}
+               "mode": mode, "opened_via": via, "copy_mode": out_copy_mode,
+               "notes": notes}
         out.update(result)
         return emit(out)
     except Exception as e:
         return fail("INSPECT_FAILED", "盘点失败: %s" % e, notes=notes,
                     traceback_tail=traceback.format_exc()[-500:])
     finally:
-        shutil.rmtree(tmpdir, ignore_errors=True)
+        if tmpdir:
+            shutil.rmtree(tmpdir, ignore_errors=True)
 
 
 def main():
@@ -498,6 +519,9 @@ def main():
     ip.add_argument("project")
     ip.add_argument("--strategy", choices=("auto", "parse", "qgis"), default="auto",
                     help="auto=qgis 可导入时用策略二，否则策略一（默认）")
+    ip.add_argument("--no-copy", action="store_true",
+                    default=False,
+                    help="直接只读打开原件（不复制到临时目录），用于拿真实图层 valid；")
     ip.set_defaults(func=cmd_inspect)
     args = p.parse_args()
     _pg_err = _path_guard(args)
