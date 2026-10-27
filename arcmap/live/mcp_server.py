@@ -113,20 +113,86 @@ def get_token():
         return ""
 
 
+# 连接与读写分开计时：连接失败几乎总是「桥没起」，而读超时几乎总是
+# 「ArcMap 主线程被模态对话框/长地理处理占住」。合成一个 30s 总超时会
+# 让 Agent 无法区分这两种可恢复性完全不同的故障。
+CONNECT_TIMEOUT = float(os.environ.get("ARCMAP_BRIDGE_CONNECT_TIMEOUT", "5"))
+IO_TIMEOUT = float(os.environ.get("ARCMAP_BRIDGE_IO_TIMEOUT", "120"))
+
+
+class BridgeError(Exception):
+    """带错误码的桥调用失败，用于给客户端结构化回报（无头桥同口径）。"""
+
+    def __init__(self, code, message, hint=None, detail=None):
+        Exception.__init__(self, message)
+        self.code = code
+        self.message = message
+        self.hint = hint
+        self.detail = detail
+
+    def as_dict(self, tool):
+        d = {"ok": False, "error_code": self.code, "message": self.message,
+             "tool": tool, "bridge": "%s:%d" % (HOST, PORT)}
+        if self.hint:
+            d["hint"] = self.hint
+        if self.detail:
+            d["detail"] = self.detail
+        return d
+
+
 def call_bridge(tool, args):
     payload = {"token": get_token(), "tool": tool, "args": args or {}}
     data = (json.dumps(payload, ensure_ascii=False) + "\n").encode("utf-8")
-    with socket.create_connection((HOST, PORT), timeout=30) as s:
-        s.sendall(data)
-        buf = b""
-        while b"\n" not in buf:
-            chunk = s.recv(65536)
-            if not chunk:
-                break
-            buf += chunk
-    resp = json.loads(buf.decode("utf-8"))
+    try:
+        sock = socket.create_connection((HOST, PORT), timeout=CONNECT_TIMEOUT)
+    except socket.timeout:
+        raise BridgeError(
+            "BRIDGE_TIMEOUT",
+            "连接 %s:%d 超时（%.1fs）" % (HOST, PORT, CONNECT_TIMEOUT),
+            hint="桥未监听，或 ArcMap 主线程被对话框/长任务阻塞；确认 ArcMap 已打开且 "
+                 "inapp_bridge.py 已在其中的 Python 窗口运行")
+    except OSError as e:
+        raise BridgeError(
+            "BRIDGE_UNREACHABLE",
+            "无法连接 %s:%d：%s" % (HOST, PORT, e),
+            hint="核对 ARCMAP_BRIDGE_PORT 是否与桥一致、桥进程是否存活、本机回环是否被拦截")
+    buf = b""
+    try:
+        with sock:
+            sock.settimeout(IO_TIMEOUT)
+            sock.sendall(data)
+            while b"\n" not in buf:
+                try:
+                    chunk = sock.recv(65536)
+                except socket.timeout:
+                    raise BridgeError(
+                        "BRIDGE_TIMEOUT",
+                        "等待桥响应超过 %.0fs（已收到 %d 字节）" % (IO_TIMEOUT, len(buf)),
+                        hint="ArcMap 可能正被模态对话框或长地理处理占用；先处理界面再重试，"
+                             "不要连环重试")
+                if not chunk:
+                    break
+                buf += chunk
+    except BridgeError:
+        raise
+    except OSError as e:
+        raise BridgeError("BRIDGE_IO_ERROR", "与桥通信失败：%s" % e,
+                          hint="桥进程可能中途退出；确认 ArcMap 仍在运行后重试")
+    if not buf.strip():
+        raise BridgeError("BRIDGE_NO_RESPONSE",
+                          "桥关闭了连接但没有返回任何数据",
+                          hint="桥脚本可能异常退出，检查 ArcMap 的 Python 窗口输出")
+    try:
+        resp = json.loads(buf.decode("utf-8"))
+    except Exception as e:
+        raise BridgeError("BRIDGE_PROTOCOL", "桥返回的不是合法 JSON：%s" % e,
+                          detail=_dec(buf[:400]))
+    if not isinstance(resp, dict):
+        raise BridgeError("BRIDGE_PROTOCOL", "桥返回的 JSON 顶层不是对象", detail=_dec(buf[:400]))
     if not resp.get("ok"):
-        raise RuntimeError(resp.get("error", "bridge error"))
+        raise BridgeError("BRIDGE_ERROR", resp.get("error", "bridge error"),
+                          hint="这是桥业务层的拒绝/失败（如 BAD_TOKEN、参数不合法），"
+                               "按 error 文本处置，不要把失败当成功回报")
     return resp.get("result")
 
 
@@ -185,18 +251,31 @@ def handle(msg):
         name = params.get("name")
         args = params.get("arguments") or {}
         if name not in BRIDGE_TOOL:
+            err = {"ok": False, "error_code": "UNKNOWN_TOOL",
+                   "message": "unknown tool: %s" % name,
+                   "available": sorted(BRIDGE_TOOL.keys())}
             return {"jsonrpc": "2.0", "id": mid, "result": {
-                "content": [{"type": "text", "text": "unknown tool: %s" % name}],
-                "isError": True}}
+                "content": [{"type": "text",
+                             "text": json.dumps(err, ensure_ascii=False, indent=2)}],
+                "isError": True, "structuredContent": err}}
         try:
             result = call_bridge(BRIDGE_TOOL[name], args)
             text = json.dumps(_to_text(result), ensure_ascii=False, indent=2)
             return {"jsonrpc": "2.0", "id": mid, "result": {
                 "content": [{"type": "text", "text": text}], "isError": False}}
-        except Exception as e:
+        except BridgeError as e:
+            payload = e.as_dict(name)
             return {"jsonrpc": "2.0", "id": mid, "result": {
-                "content": [{"type": "text", "text": "bridge call failed: %s" % e}],
-                "isError": True}}
+                "content": [{"type": "text",
+                             "text": json.dumps(payload, ensure_ascii=False, indent=2)}],
+                "isError": True, "structuredContent": payload}}
+        except Exception as e:
+            payload = {"ok": False, "error_code": "TOOL_CALL_FAILED",
+                       "message": "%s: %s" % (type(e).__name__, e), "tool": name}
+            return {"jsonrpc": "2.0", "id": mid, "result": {
+                "content": [{"type": "text",
+                             "text": json.dumps(payload, ensure_ascii=False, indent=2)}],
+                "isError": True, "structuredContent": payload}}
     return {"jsonrpc": "2.0", "id": mid,
             "error": {"code": -32601, "message": "method not found: %s" % method}}
 
