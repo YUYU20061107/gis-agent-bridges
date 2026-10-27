@@ -49,6 +49,10 @@
      成功返回当证据。
 - 文档对象是「当前文档」引用时，界面里的未保存状态与磁盘状态是
   两回事：回报必须写清核对的是哪一份状态。
+- **2026-10-28 lab5 实测**：`saveACopy` 后关闭、重开副本、逐层打印
+  `dataSource` 全部按预期更新，未观察到「API 成功但改动不落盘」的假成功路径。
+  上面的规程继续保留（成本低、结论可信），但可把 ArcMap 这一条从
+  「未知」更新为「本轮未复现」。
 
 ## 5. GUI 刷新与无头边界
 
@@ -73,6 +77,10 @@
   且内容是当前文档（布局视图出整页、数据视图出当前范围）。
 - 导出 DPI/分辨率按交付要求显式传参并记录在回报里，不要用默认值
   蒙混。
+- **2026-10-28 lab5 实测补充**：真彩色被渲成蓝色的问题依旧，参数形态没有
+  再验证（不值得再花时间）。实际做法改为「PIL 自绘合成 + 影像手工解码」，
+  报告图与交付物一律不用 ExportToPNG 出图，并在给用户的说明里点明
+  「这些是渲染图，不是 ArcMap 界面截图」。
 
 ## 7. 迁移验收规程（verify_project.py）
 
@@ -94,3 +102,26 @@
   更不许给普通 Python 3  pip 安装 arcpy（它随 Desktop 分发）。
 - 桥返回 NOT_SUPPORTED / *_FAILED 并附现场方法清单是预期行为：
   把方法清单原样回传给维护者收紧，不要在实机临时发明新策略当定案。
+
+## 9. 2026-10-28 lab5 实机复盘（详见 docs/LESSONS-lab5-20261028.md）
+
+一次完整的无 GUI 实验任务（图形编辑 / 打断融合 / 属性编辑 / 拓扑检查）
+把本手册里「待实机验证」的多数条目跑成了确定结论，并暴露出 12 条新的
+10.8 边角。可直接固化为硬规则的是：
+
+1. **arcpy 工作目录必须纯 ASCII**：中文路径会让 arcpy 把 UTF-8 字节按 GBK
+   解释，报 `IOError: [Errno 2] ... 'E:\\ds\\xe5\\xb7\\xa5...'`，父目录中文同样污染。
+   原件只读复制进 ASCII 目录作业，成果再复制回中文路径交付。
+2. **OID 字段名一律用 `Describe(fc).OIDFieldName`**：迁移进 gdb 的要素类可能是
+   `OBJECTID_1`，硬编码 `OBJECTID` 会删错要素（本轮真实踩中）。
+3. **拓扑用 `da.Walk(gdb, datatype='Topology')` 枚举**，`ListDatasets` 在根级取不到，
+   甚至返回 `None` 引发 TypeError。
+4. **`ExportTopologyErrors` 判为不可用**（`ERROR 999999`），拓扑验收改几何解析三件套。
+5. **交付 mxd 三段式验收**：包内同构目录 → 逐层 `replaceDataSource`
+   （矢量 `SHAPEFILE_WORKSPACE` / gdb `FILEGDB_WORKSPACE` / **栅格 `RASTER_WORKSPACE` + tif 名**）
+   → `relativePaths = True` → 重开逐层打印 `dataSource` 确认存在。
+6. **无头不出界面截图**：成果图自绘（含影像手工解码），并向用户明确说明。
+7. 小边角：`DeleteFeatures_management` 单参数、文本字段不写 `None`、
+   进程内首次 `SearchCursor(SHAPE@)` 需 warm-up、`Dissolve` 后字段全丢、
+   `replaceDataSource` 指向 gdb 要素数据集报 `Layer: Unexpected error`（改 RemoveLayer+AddLayer）、
+   `arcpy.mapping.Layer(path)` 要求文件真实存在。

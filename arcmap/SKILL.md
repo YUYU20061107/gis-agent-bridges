@@ -126,6 +126,21 @@ features:[{coords:[[x,y],...], attrs:{...}}]}]}`；每层回写
    （示例像素 (12,16,82)），用未动过的原始 JPG 复现同样现象 → 与本 Skill 无关，
    是本机 ArcMap 无头渲染的问题。**报告/成果图不要依赖 ExportToPNG 出真彩色**，
    改用自绘合成（PIL/Matplotlib），并如实向用户说明这一点。
+6. **arcpy 的工作目录必须纯 ASCII**（2026-10-28 lab5 实测命中，代价最大的一条）：
+   py2 下 arcpy 用 mbcs 打开路径，遇到调用方传来的 UTF-8 中文路径会被逐字节当 GBK
+   解释，报 `IOError: [Errno 2] No such file or directory: 'E:\\ds\\xe5\\xb7\\xa5...'`，
+   而且**父目录名带中文也会污染**。处置：把全部 arcpy 动作搬到 `C:\<ascii>工作目录`
+   （原件只读复制进去），成果用 py3 / PowerShell 复制回中文路径交付。
+   别用逐处解码打补丁，换目录一次解决。
+7. **拓扑数据集要用 `arcpy.da.Walk(gdb, datatype='Topology')` 枚举**：
+   `ListDatasets('', 'Topology')` 在 gdb 根级返回空甚至 `None`
+   （`TypeError: 'NoneType' object is not iterable`），因为拓扑挂在要素数据集内部。
+   交付验收（含整目录复制 .gdb 之后）都用 Walk 复核。
+8. 其余 10.8 边角与本次完整复盘见 **docs/LESSONS-lab5-20261028.md**：
+   `DeleteFeatures_management` 只接受一个参数；文本字段不能写 `None`；
+   进程内首次 `SearchCursor(SHAPE@)` 会假失败（需 warm-up）；`Dissolve` 后字段全丢；
+   `replaceDataSource` 指向 gdb 要素数据集报 `Layer: Unexpected error`（改用 RemoveLayer+AddLayer）；
+   `arcpy.mapping.Layer(path)` 要求文件真实存在；交付 mxd 的三段式相对路径验收规程。
 
 ## 实时桥（一句话）
 
@@ -158,6 +173,10 @@ features:[{coords:[[x,y],...], attrs:{...}}]}]}`；每层回写
 | arcpy 导入时报许可类错误（如 License/NotInitialized 语义） | Desktop 许可不可用（许可服务未起/授权过期） | 停。请用户在 ArcGIS Administrator 里确认授权后重跑 preflight |
 | 打开 .mxd 慢/图层大量 is_broken=true | 数据源被移动或网络盘断开 | 如实写入 inspect 结果，这正是盘点要发现的问题，不要自动修复路径 |
 | `INSPECT_FAILED` 附 traceback_tail | 打开/枚举过程异常（如文件损坏、版本高于 Desktop） | 回报原文；可用 backup 副本再试一次，仍失败则停 |
+| `IOError: [Errno 2] ... 'E:\\ds\\xe5\\xb7\\xa5...'` | 中文路径被 arcpy 按 GBK 逐字节解释（py2 编码坑） | 把工作目录换成纯 ASCII（如 `C:\lab5work`），原件只读复制进去，成果再复制回中文路径 |
+| `Object: CreateObject Layer invalid data source` | `arcpy.mapping.Layer(path)` 的路径不存在（常见：拼错子目录） | `os.path.exists` 断言后重试；成品图层与其数据放同一目录 |
+| `RuntimeError: The field is not nullable. [Name]` | 文本字段 `updateRow` 写了 `None` | 改传 `''`；数值字段可传 `None` |
+| `Failed to execute (ExportTopologyErrors)` / `ERROR 999999` | 本机该工具不可用 | 放弃它，用几何解析自查（交叉 / 悬挂 / 重叠），见 docs/LESSONS-lab5-20261028.md |
 
 ## 回报格式
 
