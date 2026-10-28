@@ -1,0 +1,51 @@
+# 离线协议自检（offline protocol self-check）
+#
+# 本 CI 在没有任何厂商 GIS 软件的 runner 上运行，只验证：
+#   - 全部 Python 文件可编译；
+#   - 11 个包的 live/selftest.py 协议自检通过（initialize / 工具清单 /
+#     confirm 闸门 / 错误 token 拒绝等协议层行为）；
+#   - 机读工具清单可由代码重新生成、且与根 README 矩阵数字一致；
+#   - 安全不变量（confirm 闸、只绑 127.0.0.1、无任意执行工具、token
+#     校验）静态自检通过；
+#   - 仓库不含本机路径 / 用户名 / 邮箱等敏感模式（脱敏扫描）。
+# 它【不】验证任何包已在真实 GIS 软件上完成实机校准——校准状态以根
+# README 与各包 docs/CALIBRATION.md 为准，不要把 CI 绿灯理解为实机可用。
+name: offline-protocol-selfcheck
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  selfcheck:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Byte-compile the whole tree
+        run: python -m compileall -q .
+      - name: Per-package protocol selftests (offline, no vendor software)
+        run: |
+          set -e
+          for pkg in supermap arcgis-pro arcmap qgis geoscene mapgis envi globalmapper fme pgrouting istsos; do
+            echo "== $pkg =="
+            python "$pkg/live/selftest.py"
+          done
+      - name: Repository sample project parses without vendor software
+        run: python scripts/quickstart.py --sample-qgis
+      - name: Regenerate machine-readable tool manifest
+        run: python manifest/build_manifest.py
+      - name: README tool counts match manifest
+        run: python manifest/check_readme_counts.py
+      - name: Safety invariants (confirm gate / loopback only / no arbitrary-exec tools / token check)
+        run: python manifest/check_invariants.py
+      - name: Desensitization scan (no local paths, usernames, mailboxes)
+        run: |
+          if grep -RInE --exclude-dir=.github --exclude-dir=.git 'C:\\Users\\|/home/[a-z]|RAHUYU|yyu512008|@gmail\.com|@qq\.com' \
+              --include='*.py' --include='*.md' --include='*.json' --include='*.yml' .; then
+            echo "sensitive pattern hit" >&2
+            exit 1
+          fi
+          echo "scan clean"
