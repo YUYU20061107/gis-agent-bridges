@@ -1,0 +1,18 @@
+{
+  "mcpServers": {
+    "pgrouting-consumer-bridge": {
+      "command": "python",
+      "args": [
+        "<ABSOLUTE_PATH_TO_PACKAGE>/pgrouting/live/mcp_server.py"
+      ],
+      "env": {
+        "PGHOST": "localhost",
+        "PGPORT": "5432",
+        "PGDATABASE": "<your_database>",
+        "PGUSER": "<your_readonly_user>",
+        "PGROUTING_ALLOWED_TABLES": "ways",
+        "PGROUTING_EXPORT_DIR": "<ABSOLUTE_EXPORT_DIR>"
+      }
+    }
+  }
+}

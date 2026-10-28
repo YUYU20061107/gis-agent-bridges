@@ -29,6 +29,8 @@ live in-app MCP bridge — all in one repo for easy reuse.
 | ENVI（NV5） | `envi/` | 仅无头 | 7 | v0.2 · 已对齐 SuperMap 校准通用升级（selftest 线程读、verify_project 盘点脚本、ENGINEERING-PLAYBOOK；本包无 token 文件）、idlpy 待实机、未实机校准 |
 | Global Mapper（Blue Marble） | `globalmapper/` | 无头＋脚本半实时 | 7 | v0.2 · 已对齐 SuperMap 校准通用升级（selftest 线程读、verify_project 盘点脚本、ENGINEERING-PLAYBOOK；本包无 token 文件）、API 签名待探针、未实机校准 |
 | FME（Safe Software） | `fme/` | 仅无头 runner | 6 | v0.2 · 已对齐 SuperMap 校准通用升级（selftest 线程读、verify_project 盘点脚本、ENGINEERING-PLAYBOOK；本包无 token 文件）、与官方 Flow MCP 互补、未实机校准 |
+| pgRouting（OSGeo） | `pgrouting/` | 仅消费侧只读（stdio，无常驻桥） | 5 | v0.1 · 固定参数化模板调 pgr_dijkstra 取路径/统计/导出 GeoJSON，无任意 SQL 入口；协议自检 12/12（假 psql 替身）、未实机校准（无 PostgreSQL+pgRouting 环境）；非 pgRouting 官方组件 |
+| istSOS（OGC SensorThings API） | `istsos/` | 仅消费侧只读（stdio，无常驻桥） | 6 | v0.1 · STA 只读工具组（Things/Datastreams/观测/GeoJSON 导出，条数与分页硬上限）；协议自检 12/12（本地假 STA 服务端）、istSOS4 本体未实测；非 istSOS 官方组件 |
 
 ## 统一设计原则
 
@@ -55,7 +57,7 @@ live in-app MCP bridge — all in one repo for easy reuse.
 | 47618 | QGIS |
 | 47619 | GeoScene Pro |
 
-MapGIS、ENVI、Global Mapper、FME 无常驻应用内桥，不占端口。
+MapGIS、ENVI、Global Mapper、FME、pgRouting、istSOS 无常驻应用内桥，不占端口。
 
 ## 快速开始
 
@@ -78,22 +80,55 @@ MapGIS、ENVI、Global Mapper、FME 无常驻应用内桥，不占端口。
 `manifest/build_manifest.py` 从各包服务端实启探测生成，勿手改）；
 安全模型与漏洞报告方式见根目录 `SECURITY.md`。
 
+## 校准证据
+
+本仓的每条能力结论按三级证据认定，**不跨级引用**：
+
+| 级别 | 含义 |
+|---|---|
+| **实机校准** | 在真实厂商软件上按校准工单逐项跑通，数值与环境见下表 |
+| **协议自检** | 无厂商软件环境中验证协议层（initialize / 工具清单 / 保存闸门 / 错误 token 拒绝）与无头文件层（备份真复制、盘点结构化报错） |
+| **未证实** | 接口未经探针或实机确认，桥只返回结构化错误与现场线索，不假装可用 |
+
+### SuperMap（实机校准 · 文件回退模式，2026-10-24）
+
+- **环境**：iDesktop 10i(2020) 10.1.0；iObjects Java 10.1.0.19113；
+  iobjectspy 10.1.0.0；Python 3.5.4；OpenJDK 1.8.0_232；Sentinel LDK
+  许可冒烟通过。校准机无 iDesktopX，实时对象不可得。
+- **方法**：按 `supermap/docs/CALIBRATION.md` 工单执行；无头三件套
+  （preflight / backup / inspect）＋文件回退桥 13 个工具逐项验收；
+  写类工具只在带时间戳的工作空间**副本**上以 `confirm=true` 验证，
+  保存后重开副本复核改动持久性，并核对原件 mtime 全程未变。
+- **结果**：13/13 工具可用；导出图 1200×900 PNG 真实落盘；协议层自检
+  `live/selftest.py` 在 Windows 下 6/6 PASS。2026-10-28 在另一台机器的
+  全新克隆上复跑 preflight，`iobjectspy_import`、`license_smoke` 均 ok。
+  完整记录：`supermap/docs/CALIBRATION-RESULTS-20261024.md`。
+
+### ArcMap（实机校准 · 无头桥，2026-10-25）
+
+- **环境**：ArcMap Desktop 10.8；Python 2.7.16（ArcGIS 自带）。
+- **方法**：无头桥三项只读＋三项受控写逐项验收；另以 lab2 地理配准
+  流水线做回归基线。实机发现的五项缺陷（py2 编码两坑、Warp 不可用、
+  Describe 残缺、无头导出色调异常）及处置已回写
+  `arcmap/docs/CALIBRATION.md`。
+- **结果**：回归基线——控制点 7 个，一次多项式 RMS **2.3884 m**、
+  max 3.6348 m，像元 0.9165×0.9235 m；矢量 5 层
+  `features_written == features_counted`。
+
+### 局限
+
+- 上述结论**只对所列环境与版本组合成立**；换版本、换许可形态须重新校准。
+- 文件回退模式操作的是副本，**界面不刷新，不等于实时接入**；全部实时
+  （应用内）模式目前最高只到「协议自检」级。
+- 未列入上表的包（ArcGIS Pro、QGIS、GeoScene、MapGIS、ENVI、
+  Global Mapper、FME、pgRouting、istSOS）均未实机校准，不要把任何一个包/模式的结论
+  套到另一个上。
+
 ## 状态与诚实声明
 
-各包的校准状态**以上方软件矩阵与各包 README 为准，按模式分别认定**，
-不要一概而论：
-
-- **已完成部分实机校准**：SuperMap 无头/文件回退模式（iDesktop 10i(2020)，
-  13/13 工具，2026-10-24；记录见 `supermap/docs/CALIBRATION-RESULTS-20261024.md`）；
-  ArcMap 无头桥（Desktop 10.8 / Python 2.7.16，2026-10-25；三项只读＋三项受控写）。
-- **仍未实机校准**：全部实时（应用内）模式（含 SuperMap iDesktopX 实时、
-  ArcMap 实时桥），以及 ArcGIS Pro、QGIS、GeoScene、MapGIS、ENVI、
-  Global Mapper、FME 各包。这些目前只完成了协议层自检（initialize /
-  工具清单 / 保存闸门 / 错误 token 拒绝）与无头文件层（备份真复制、盘点的
-  结构化报错等）在无厂商软件环境中的验证。
-
-使用前请先按各包校准指南完成校准——**不要把"协议自检通过"理解为
-"已与真实软件对接成功"，也不要把一个模式的校准结论套到另一个模式上**。
+各包的校准状态**以上方软件矩阵、校准证据与各包 README 为准，按模式
+分别认定**，不要一概而论。使用前请先按各包校准指南完成校准——
+**不要把"协议自检通过"理解为"已与真实软件对接成功"**。
 
 ## 许可与免责
 

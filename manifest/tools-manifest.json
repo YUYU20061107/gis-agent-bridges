@@ -593,6 +593,92 @@
           "description": "读某 workspace 最近运行日志的尾部（FME 日志文件或本桥运行日志）"
         }
       ]
+    },
+    {
+      "package": "pgrouting",
+      "server_name": "pgrouting-consumer-bridge",
+      "server_version": "0.1.0",
+      "port": null,
+      "tool_count": 5,
+      "tools": [
+        {
+          "name": "pgrouting_ping",
+          "access": "read",
+          "requires_confirm": false,
+          "description": "连通性检查：桥是否在线，并回报 psql 是否可用"
+        },
+        {
+          "name": "pgrouting_discover",
+          "access": "read",
+          "requires_confirm": false,
+          "description": "环境发现：psql 可用性、连接环境变量设置状态（密码只报是否设置）、允许表集合、SELECT 1 只读探针（校准用）"
+        },
+        {
+          "name": "pgrouting_route_dijkstra",
+          "access": "read",
+          "requires_confirm": false,
+          "description": "用固定 pgr_dijkstra 模板查一条最短路径：返回节点/边序列与累计代价；无任意 SQL 入口"
+        },
+        {
+          "name": "pgrouting_export_route_geojson",
+          "access": "write",
+          "requires_confirm": false,
+          "description": "用固定模板把一条路径经 ST_AsGeoJSON 导出为 GeoJSON 文件（写调用方指定的新文件；filename 只许文件名、须 .geojson；落点受 PGROUTING_EXPORT_DIR 约束）",
+          "note": "file-output: creates a new file at a caller-specified path; no confirm gate by design"
+        },
+        {
+          "name": "pgrouting_network_summary",
+          "access": "read",
+          "requires_confirm": false,
+          "description": "边表只读统计：节点数（source/target 去重）与边数"
+        }
+      ]
+    },
+    {
+      "package": "istsos",
+      "server_name": "istsos-consumer-bridge",
+      "server_version": "0.1.0",
+      "port": null,
+      "tool_count": 6,
+      "tools": [
+        {
+          "name": "istsos_ping",
+          "access": "read",
+          "requires_confirm": false,
+          "description": "连通性检查：桥是否在线、STA 基地址是否已配置、服务端根路径是否可达"
+        },
+        {
+          "name": "istsos_discover",
+          "access": "read",
+          "requires_confirm": false,
+          "description": "环境发现：基地址、硬上限、token 守卫、导出目录与校准口径（校准用）"
+        },
+        {
+          "name": "istsos_list_things",
+          "access": "read",
+          "requires_confirm": false,
+          "description": "【只读】列出 STA 服务端的 Things（id、名称、描述）；top 为单页条数，上限 100，超限拒绝"
+        },
+        {
+          "name": "istsos_list_datastreams",
+          "access": "read",
+          "requires_confirm": false,
+          "description": "【只读】列出 Datastreams（id、名称、单位符号）；传 thing_id 只看某个 Thing 的流；top 上限 100，超限拒绝"
+        },
+        {
+          "name": "istsos_get_observations",
+          "access": "read",
+          "requires_confirm": false,
+          "description": "【只读】取某个 Datastream 的观测（按 phenomenonTime 倒序）：phenomenonTime、result、resultTime；limit 上限 100，超限拒绝"
+        },
+        {
+          "name": "istsos_export_observations_geojson",
+          "access": "write",
+          "requires_confirm": false,
+          "description": "【只读远端·本地落文件】把某个 Datastream 的观测导出为 GeoJSON：几何取所属 Thing 的第一个 Location，观测值进 properties；limit 上限 500，超限拒绝；无位置时报 NO_LOCATION 不伪造坐标",
+          "note": "file-output: creates a new file at a caller-specified path; no confirm gate by design"
+        }
+      ]
     }
   ]
 }

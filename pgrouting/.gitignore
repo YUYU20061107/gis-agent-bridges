@@ -1,0 +1,7 @@
+__pycache__/
+*.py[cod]
+*.zip
+.pgrouting-agent-bridge.token
+*.tmp
+exports/
+*.geojson.tmp

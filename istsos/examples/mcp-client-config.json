@@ -1,0 +1,1 @@
+{"mcpServers":{"istsos-consumer-bridge":{"args":["<ABSOLUTE_PATH_TO_PACKAGE>/istsos/live/mcp_server.py"],"command":"python3","env":{"ISTSOS_BASE_URL":"http://localhost:8080/istsos4/v1.1","ISTSOS_BRIDGE_TOKEN":"<SET-A-TOKEN-OR-READ-THE-TOKEN-FILE>"}}}}
