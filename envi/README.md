@@ -124,7 +124,7 @@ ping / discover / run_task 闸门 / 错误 token，共 6 项）。
 
 ## 环境要求
 
-- 盘点层：任意 Python 3，无其他依赖。
+- 盘点层：Python 3.11+（建议口径），无其他依赖。
 - 任务层：ENVI + IDL 许可、与之配套的 idlpy（随 IDL/ENVI 安装或官方桥包），
   在注册 MCP 时把 command 指向装有 idlpy 的解释器。
 - 任一支持 stdio 的 MCP 客户端 / AI Agent。

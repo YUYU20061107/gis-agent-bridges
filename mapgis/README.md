@@ -59,7 +59,7 @@ MapGIS Python 绑定、长什么样"查清楚，再谈桥接路线。本包 v0.1
 ## 快速上手
 
 ```bash
-# 1) 在装有 MapGIS 的机器上先跑探针（任意 Python 3；若 MapGIS 自带 Python 解释器，优先用它再跑一遍）
+# 1) 在装有 MapGIS 的机器上先跑探针（Python 3，建议 3.11+；若 MapGIS 自带 Python 解释器，优先用它再跑一遍）
 python scripts/probe_mapgis.py > probe-result.json
 
 # 2) 无头骨架
@@ -70,7 +70,7 @@ python scripts/mapgis_bridge.py inspect <某个 .MPJ 工程文件>
 # 3) MCP 探针服务端自检与注册
 python live/selftest.py
 # 在你的 AI Agent / MCP 客户端中注册：
-#   command: 任意 Python 3 解释器
+#   command: Python 3 解释器（建议 3.11+）
 #   args:    <仓库路径>/live/mcp_server.py
 # 注册后应能列出 3 个 mapgis_* 工具（ping / discover / probe_environment）。
 ```
@@ -133,7 +133,7 @@ mapgis/
 
 ## 环境要求
 
-- 探针与 MCP 服务端：Python 3.x、纯标准库，无第三方依赖。
+- 探针与 MCP 服务端：Python 3.11+（建议口径；纯标准库，无第三方依赖）。
 - 目标机器（探针执行地）：装有 MapGIS 10 系列桌面与合法许可的 Windows 机器
   （本项目不提供、不绕过任何许可机制）；若 MapGIS 自带 Python 解释器，
   用它再跑一遍探针，两个解释器的结果都要回传。

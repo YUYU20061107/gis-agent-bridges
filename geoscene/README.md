@@ -133,11 +133,11 @@ GeoScene Pro 中的可用性待实机核验，见文首声明），在本机开�
    看到 `[geoscene-live-bridge] listening on 127.0.0.1:47619` 即桥已上线；
    本次 token 会写到 `~/.geoscene-live-bridge.token`，MCP 服务端自动读取，无需手填。
 3. 在你的 AI Agent / MCP 客户端的 MCP 配置中注册服务端：
-   - command：任意 Python 3 解释器（不需要装 arcpy，它只做转发）
+   - command：Python 3 解释器（建议 3.11+；不需要装 arcpy，它只做转发）
    - args：`<包路径>\live\mcp_server.py`
    注册后客户端应能列出 13 个 geoscene_* 工具（12 个工程工具 + ping）。
 
-接入前建议先在任意 Python 3 里跑一遍 `live/selftest.py` 自检协议层
+接入前建议先在 Python 3（建议 3.11+）里跑一遍 `live/selftest.py` 自检协议层
 （initialize / tools/list / ping / discover / 保存闸门 / 错误 token，共 6 项）。
 注意：自检只验证包自身的协议层，**不构成对 GeoScene Pro 的兼容性证明**；
 兼容性核验必须按 docs/CALIBRATION.md 在实机完成。
@@ -227,7 +227,7 @@ GeoScene Pro 中的可用性待实机核验，见文首声明），在本机开�
 
 - GeoScene Pro 及其自带 Python 环境；实时桥需要能在 GeoScene Pro 的
   Python 窗口或 Notebook 里执行脚本。
-- Python 3.x（MCP 服务端与自检只需要标准库）。
+- Python 3.11+（建议口径；MCP 服务端与自检只需要标准库）。
 - 任一支持 stdio 的 MCP 客户端 / AI Agent（实时桥）；无头桥只需要能执行脚本的 Agent。
 - 一份你自己合法持有的 GeoScene Pro 许可（本项目不提供、不绕过任何许可机制；
   arcpy 无法脱离桌面端安装单独安装或运行）。

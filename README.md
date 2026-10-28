@@ -113,7 +113,7 @@ Issue 模板，贡献方式见 `CONTRIBUTING.md`。
 | 范围 | 要求 |
 |---|---|
 | 仓库级工具（quickstart、manifest 校验、CI） | Python 3.11+（CI 用 3.11，各包自检亦在此口径验证） |
-| 多数 stdio MCP 服务端 | 建议 Python 3.11+；纯标准库、无第三方依赖 |
+| 多数 stdio MCP 服务端 | 可运行于任意 Python 3（纯标准库、无第三方依赖）；仓库自检与 CI 的验证口径为 3.11+，**建议 3.11+**——各包文档里的「任意 Python 3」指可运行下限，与此不冲突 |
 | SuperMap 无头桥 | 厂商运行时 Python 3.5.4＋iobjectspy（专用环境，见该包文档） |
 | ArcMap 桥 | ArcGIS 自带 Python 2.7.16 |
 | 其余桌面实时桥 | 随宿主 GIS 软件的内嵌解释器，见各包 README |
