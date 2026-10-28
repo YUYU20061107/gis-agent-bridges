@@ -1,0 +1,35 @@
+<!DOCTYPE qgis PUBLIC 'http://mrcc.com/qgis.dtd' 'SYSTEM'>
+<qgis version="3.34.0" projectname="gis-agent-bridges-sample">
+  <title>gis-agent-bridges sample project</title>
+  <autotransaction active="0"/>
+  <evaluateDefaultValues active="0"/>
+  <trust active="0"/>
+  <projectCrs>
+    <spatialrefsys nativeFormat="Wkt">
+      <authid>EPSG:4326</authid>
+    </spatialrefsys>
+  </projectCrs>
+  <mapcanvas name="theMapCanvas">
+    <destinationsrs>
+      <spatialrefsys nativeFormat="Wkt">
+        <authid>EPSG:4326</authid>
+      </spatialrefsys>
+    </destinationsrs>
+  </mapcanvas>
+  <projectlayers>
+    <maplayer type="vector" geometry="Point">
+      <id>sample_stations_20261028</id>
+      <layername>Sample Stations</layername>
+      <srs>
+        <spatialrefsys nativeFormat="Wkt">
+          <authid>EPSG:4326</authid>
+        </spatialrefsys>
+      </srs>
+      <provider encoding="UTF-8">ogr</provider>
+      <datasource>./layers/stations.geojson</datasource>
+    </maplayer>
+  </projectlayers>
+  <layer-tree-group name="">
+    <layer-tree-layer id="sample_stations_20261028" name="Sample Stations" checked="Qt::Checked" expanded="1"/>
+  </layer-tree-group>
+</qgis>

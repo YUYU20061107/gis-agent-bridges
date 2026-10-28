@@ -1,0 +1,57 @@
+name: Bug report
+description: Report a reproducible bridge problem
+title: "[bug] "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Before filing, remove tokens, passwords, API keys, private project
+        paths and unredacted logs. Security issues must use SECURITY.md.
+  - type: dropdown
+    id: package
+    attributes:
+      label: Package
+      options:
+        - supermap
+        - arcgis-pro
+        - arcmap
+        - qgis
+        - geoscene
+        - mapgis
+        - envi
+        - globalmapper
+        - fme
+        - pgrouting
+        - istsos
+        - repository-wide
+    validations:
+      required: true
+  - type: input
+    id: environment
+    attributes:
+      label: Environment
+      description: OS, Python or vendor runtime, GIS software version, MCP client.
+      placeholder: "Windows 11; Python 3.11; QGIS 3.34; Claude Desktop"
+    validations:
+      required: true
+  - type: textarea
+    id: repro
+    attributes:
+      label: Steps to reproduce
+      description: Include whether the repository sample data reproduces it.
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual result
+      description: Paste the structured error code and redacted selftest output.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected result
+    validations:
+      required: true

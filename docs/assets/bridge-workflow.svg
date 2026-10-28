@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="360" viewBox="0 0 1200 360" role="img" aria-label="gis-agent-bridges workflow diagram">
+  <rect width="1200" height="360" fill="#f7f3ea"/>
+  <text x="600" y="42" text-anchor="middle" font-family="Arial, sans-serif" font-size="25" font-weight="700" fill="#16324f">AI Agent → safety-gated MCP bridge → GIS / database / sensor service</text>
+  <g font-family="Arial, sans-serif" font-size="19" fill="#16324f">
+    <rect x="35" y="105" width="190" height="130" rx="16" fill="#dceeff" stroke="#245b8f" stroke-width="2"/>
+    <text x="130" y="155" text-anchor="middle" font-weight="700">AI Agent</text>
+    <text x="130" y="188" text-anchor="middle" font-size="16">enumerated tools only</text>
+    <rect x="290" y="105" width="230" height="130" rx="16" fill="#e8f5e9" stroke="#357a38" stroke-width="2"/>
+    <text x="405" y="145" text-anchor="middle" font-weight="700">MCP bridge</text>
+    <text x="405" y="178" text-anchor="middle" font-size="16">token + confirm gate</text>
+    <text x="405" y="205" text-anchor="middle" font-size="16">originals read-only</text>
+    <rect x="585" y="85" width="250" height="170" rx="16" fill="#fff4d6" stroke="#9a6a00" stroke-width="2"/>
+    <text x="710" y="125" text-anchor="middle" font-weight="700">Target system</text>
+    <text x="710" y="160" text-anchor="middle" font-size="16">Desktop GIS</text>
+    <text x="710" y="188" text-anchor="middle" font-size="16">PostgreSQL + pgRouting</text>
+    <text x="710" y="216" text-anchor="middle" font-size="16">SensorThings API service</text>
+    <rect x="900" y="105" width="260" height="130" rx="16" fill="#f3e5f5" stroke="#6a3d7a" stroke-width="2"/>
+    <text x="1030" y="145" text-anchor="middle" font-weight="700">Auditable result</text>
+    <text x="1030" y="178" text-anchor="middle" font-size="16">structured report / GeoJSON</text>
+    <text x="1030" y="205" text-anchor="middle" font-size="16">calibration status stated</text>
+  </g>
+  <g stroke="#16324f" stroke-width="3" fill="none" marker-end="url(#arrow)">
+    <path d="M225 170 H282"/>
+    <path d="M520 170 H577"/>
+    <path d="M835 170 H892"/>
+  </g>
+  <defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="#16324f"/></marker></defs>
+  <text x="600" y="305" text-anchor="middle" font-family="Arial, sans-serif" font-size="17" fill="#444">Protocol self-test is not real-machine calibration · 协议自检不等于实机校准</text>
+</svg>

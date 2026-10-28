@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-check_invariants.py — 安全不变量静态自检（对 9 包 live/mcp_server.py
+check_invariants.py — 安全不变量静态自检（对 11 包 live/mcp_server.py
 与 live/inapp_bridge.py，如有）
 
 检查口径（先声明，后检查；不为变绿放宽）：

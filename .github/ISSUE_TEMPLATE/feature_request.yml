@@ -1,0 +1,26 @@
+name: Feature request
+description: Propose a bounded tool, package improvement or documentation addition
+title: "[feature] "
+labels: ["enhancement"]
+body:
+  - type: textarea
+    id: workflow
+    attributes:
+      label: Real workflow
+      description: What GIS task should become possible, and who needs it?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed change
+      description: Name the package, tool surface and expected inputs and outputs.
+    validations:
+      required: true
+  - type: textarea
+    id: safety
+    attributes:
+      label: Safety and calibration impact
+      description: Is it read-only or a write? How should confirm, originals protection and calibration be handled?
+    validations:
+      required: true

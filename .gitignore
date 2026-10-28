@@ -8,3 +8,5 @@ backups/
 .*-live-bridge.token
 .fme-agent-bridge.token
 .supermap-live-bridge.token
+.pgrouting-agent-bridge.token
+.istsos-agent-bridge.token

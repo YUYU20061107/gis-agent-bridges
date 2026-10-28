@@ -1,0 +1,39 @@
+name: Calibration report
+description: Report real-machine calibration evidence for one package and mode
+title: "[calibration] "
+labels: ["calibration"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Calibration conclusions apply only to the stated software version,
+        operating system, runtime and mode. Do not upload private projects,
+        credentials or unredacted screenshots.
+  - type: input
+    id: target
+    attributes:
+      label: Package and mode
+      placeholder: "qgis / live mode"
+    validations:
+      required: true
+  - type: input
+    id: environment
+    attributes:
+      label: Environment
+      description: OS, GIS software exact version, Python/vendor runtime, license type if relevant.
+    validations:
+      required: true
+  - type: textarea
+    id: results
+    attributes:
+      label: Per-tool results
+      description: List each tool as pass, fail or not run, with observed values.
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Evidence and limitations
+      description: Logs, output files, reference values and anything not verified.
+    validations:
+      required: true

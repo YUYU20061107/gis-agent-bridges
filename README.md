@@ -1,8 +1,15 @@
 # gis-agent-bridges
 
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+[![YUYU20061107/gis-agent-bridges MCP server](https://glama.ai/mcp/servers/YUYU20061107/gis-agent-bridges/badges/score.svg)](https://glama.ai/mcp/servers/YUYU20061107/gis-agent-bridges)
+
+English version: [`README.en.md`](README.en.md)
+
 A family of small, safety-gated bridges that let AI agents operate mainstream
 GIS software — headless inventory/backup plus, where the vendor API allows, a
 live in-app MCP bridge — all in one repo for easy reuse.
+
+![桥工作流示意：AI Agent 经带安全闸的 MCP 桥连接 GIS、数据库与传感器服务](docs/assets/bridge-workflow.svg)
 
 一个把主流 GIS 软件的「AI Agent 桥」收在一起的合集仓库：每个软件一个子目录，
 形态统一为两种——**无头桥**（在软件进程外盘点、备份工程文件，只对副本动手），
@@ -18,9 +25,9 @@ live in-app MCP bridge — all in one repo for easy reuse.
 
 ## 软件矩阵
 
-| 软件 | 目录 | 形态 | MCP 工具数 | 状态 |
+| 软件 Software | 目录 Directory | 形态 Form | MCP 工具数 Tools | 状态 Status |
 |---|---|---|---|---|
-| SuperMap iDesktopX | `supermap/` | 实时＋无头 | 13 | v0.4 · 文件回退模式已实机校准（iDesktop 10i，13/13）；iDesktopX 实时待验证；v0.4 增补工程文件生产手册、三维场景资产与验收脚本 |
+| SuperMap iDesktopX | `supermap/` | 实时＋无头 | 13 | 整包 v0.4（live server 0.3.0，两者区别见 `docs/VERSIONING.md`）· 文件回退模式已实机校准（iDesktop 10i，13/13）；iDesktopX 实时待验证；v0.4 增补工程文件生产手册、三维场景资产与验收脚本 |
 | ArcGIS Pro | `arcgis-pro/` | 实时＋无头 | 13 | v0.2 · 已对齐 SuperMap 校准通用升级（selftest 线程读、token 文件环境变量、verify_project 盘点脚本、ENGINEERING-PLAYBOOK）、未实机校准 |
 | ArcMap（Esri 已退役，个人自用向） | `arcmap/` | 实时＋无头 | 10＋无头 6 动作 | v0.3 · 无头桥已实机校准（Desktop 10.8 / Python 2.7.16，2026-10-25；三只读＋三受控写、py2 编码两坑已修）；实时桥未实机校准 |
 | QGIS | `qgis/` | 实时＋无头 | 12 | v0.2 · 已对齐 SuperMap 校准通用升级（selftest 线程读、token 文件环境变量、verify_project 盘点脚本、ENGINEERING-PLAYBOOK）、未实机校准 |
@@ -35,7 +42,10 @@ live in-app MCP bridge — all in one repo for easy reuse.
 ## 统一设计原则
 
 - **只在本机**：应用内桥只监听 127.0.0.1，每次启动生成随机 token，
-  请求必须带对 token 才执行；token 只经本地文件在桥与 MCP 服务端之间传递。
+  请求必须带对 token 才执行。token 有两种传递方式：桌面包由 MCP
+  服务端自动读取本地 token 文件，**用户不需要手抄 token**；
+  pgRouting/istsos 消费桥是直接 stdio 服务，工具调用参数须附当前
+  `_token`（见各包 README）。
 - **写操作 confirm 闸门**：内容级写工具缺 `confirm=true` 一律拒绝执行；
   confirm 只能在用户明确同意后填入，Agent 不许自作主张绕过。
 - **原件只读**：盘点与任何写需求都先 backup、只改副本，原件零写入。
@@ -61,24 +71,70 @@ MapGIS、ENVI、Global Mapper、FME、pgRouting、istSOS 无常驻应用内桥�
 
 ## 快速开始
 
-1. 进入你要用的软件对应的子目录。
-2. 先读该包的 `README.md` 与 `SKILL.md`，弄清它的形态、工具清单与已知边界。
-3. 跑该包的探针 / preflight 与 `live/selftest.py`，确认协议层与本机环境无误。
-4. 按该包 `docs/CALIBRATION.md` 在真实软件上完成实机校准，通过后再正式使用。
+**第 0 步：拿到仓库。**
+
+```bash
+git clone https://github.com/YUYU20061107/gis-agent-bridges.git
+cd gis-agent-bridges
+```
+
+不用 Git 也可以在 GitHub 页面 `Code → Download ZIP` 下载解压。
+本仓代码是纯 Python 标准库，**没有第三方依赖要装**。
+
+**先跑通（约 1 分钟，不需要任何 GIS 软件）：**
+
+```bash
+python scripts/quickstart.py --list
+python scripts/quickstart.py --package qgis --selftest
+python scripts/quickstart.py --sample-qgis
+```
+
+第一条列出 11 个包与工具数；第二条跑指定包的离线协议自检；第三条用
+仓内合成样本工程验证无头解析（样本在 `examples/sample-data/`）。
+Windows 可改用 `scripts/quickstart.ps1`，macOS/Linux 可用
+`scripts/quickstart.sh`。
+
+**再正式接入：**
+
+1. 生成客户端配置片段：
+   `python scripts/quickstart.py --package <包名> --print-config`，
+   配置文件落点见 `docs/CLIENTS.md`。
+2. 读目标包的 `README.md` 与 `SKILL.md`，弄清形态、工具清单与边界；
+   桌面实时桥按包内 live 说明在软件里启动桥（多数包是 `live/LIVE.md`，
+   ENVI 为 `live/HEADLESS.md`、FME 为 `live/RUNNER.md`）。
+3. 按该包 `docs/CALIBRATION.md` 在真实软件上完成实机校准，通过后再
+   正式使用。**自检通过不等于校准完成。**
+
+常见报错见 `docs/TROUBLESHOOTING.md`；提 Issue/校准报告请用仓库的
+Issue 模板，贡献方式见 `CONTRIBUTING.md`。
+
+### Python 版本
+
+| 范围 | 要求 |
+|---|---|
+| 仓库级工具（quickstart、manifest 校验、CI） | Python 3.11+（CI 用 3.11，各包自检亦在此口径验证） |
+| 多数 stdio MCP 服务端 | 建议 Python 3.11+；纯标准库、无第三方依赖 |
+| SuperMap 无头桥 | 厂商运行时 Python 3.5.4＋iobjectspy（专用环境，见该包文档） |
+| ArcMap 桥 | ArcGIS 自带 Python 2.7.16 |
+| 其余桌面实时桥 | 随宿主 GIS 软件的内嵌解释器，见各包 README |
 
 ## 客户端接入示例（examples/）
 
-每个包都带一份可直接复制的接入示例，不用对着文字说明手拼配置：
+根目录 `examples/` 是跨包总入口（第一次试用路径＋合成样本数据）。
+每个包也都带一份可直接复制的接入示例：
 
 - `<包>/examples/mcp-client-config.json`：MCP 客户端配置片段，合并进你所用
   客户端（Claude Desktop / Cursor / Trae 等）的 `mcpServers` 段，把占位符
-  `<ABSOLUTE_PATH_TO_PACKAGE>` 换成本包在你机器上的绝对路径即可。
+  `<ABSOLUTE_PATH_TO_PACKAGE>` 换成**仓库根目录**在你机器上的绝对路径即可
+  （或用 `scripts/quickstart.py --print-config` 自动替换）。
 - `<包>/examples/prompts.md`：2–3 条可直接对 Agent 说的提示词示例（只读
   盘点、导出、以及一条会触发 confirm 闸的写操作），并写明各自的预期行为。
 
 工具清单的机读版本在 `manifest/tools-manifest.json`（由
 `manifest/build_manifest.py` 从各包服务端实启探测生成，勿手改）；
-安全模型与漏洞报告方式见根目录 `SECURITY.md`。
+版本口径见 `docs/VERSIONING.md`，变更记录见 `CHANGELOG.md`；
+安全模型与漏洞报告方式见根目录 `SECURITY.md`（英文版
+`SECURITY.en.md`）。
 
 ## 校准证据
 
