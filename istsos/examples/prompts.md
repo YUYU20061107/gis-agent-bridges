@@ -1,6 +1,7 @@
 # istsos 客户端接入示例
 
 - 配置文件：同目录 `mcp-client-config.json`，把内容合并进你的 MCP 客户端配置（如 Claude Desktop / Cursor / Trae 的 mcpServers 段）。
+- **解释器**：配置里 `command` 写的是 `python`；macOS/Linux 上若没有 `python` 命令、只有 `python3`，把 `command` 改成 `python3`。
 - **必须替换**：args 里的 `<ABSOLUTE_PATH_TO_PACKAGE>` 换成本包在你机器上的绝对路径；env 里的 `ISTSOS_BASE_URL` 换成你的 STA 服务端基地址（文件里的 `http://localhost:8080/istsos4/v1.1` 只是占位示例，不是真实服务）；`ISTSOS_BRIDGE_TOKEN` 换成你自己的 token，或删掉这一行、改用服务端生成的 token 文件（默认 `~/.istsos-agent-bridge.token`）。
 - 无常驻应用内桥、不占端口：本包是 stdio 消费侧只读桥，服务端只在客户端拉起时存在，对 STA 服务端只发 HTTP GET。
 

@@ -1,0 +1,28 @@
+# pgRouting 样本环境：PostgreSQL 17 + PostGIS 3.5 + pgRouting 3.7.3。
+# 镜像标签按 pgRouting 官方 Docker 标签顺序
+# {PostgreSQL}-{PostGIS}-{pgRouting} 固定到具体版本，不使用 latest。
+# 首次启动需要联网拉取镜像；本文档不把“能拉取”表述为已验证事实。
+services:
+  db:
+    image: pgrouting/pgrouting:17-3.5-3.7.3
+    environment:
+      POSTGRES_DB: pgrouting_sample
+      POSTGRES_USER: pgrouting
+      # 仅限这个可丢弃的本地样本环境；不要复用到其他环境。
+      POSTGRES_PASSWORD: pgrouting_local_only
+    ports:
+      # 只绑定宿主机回环地址；宿主机端口 54329 -> 容器 5432。
+      - "127.0.0.1:54329:5432"
+    volumes:
+      - pgrouting_sample_data:/var/lib/postgresql/data
+      # PostgreSQL 官方入口只在数据目录为空、首次初始化时执行此 SQL。
+      # 若已启动过且要重建样本，先 docker compose down -v（会删除样本卷）。
+      - ./sample-network.sql:/docker-entrypoint-initdb.d/10-sample-network.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U pgrouting -d pgrouting_sample"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+
+volumes:
+  pgrouting_sample_data:

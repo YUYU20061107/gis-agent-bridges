@@ -1,0 +1,9 @@
+__pycache__/
+*.py[cod]
+*.zip
+.istsos-agent-bridge.token
+.istsos-agent-bridge/
+*.tmp
+exports/
+*.geojson.tmp
+observations_*.geojson

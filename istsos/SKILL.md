@@ -19,7 +19,18 @@
 2. 先调 `istsos_discover` 与 `istsos_ping`：discover 回报硬上限
    与校准口径，ping 确认服务端根路径可达；ping 不通先解决
    地址/网络，不许进入业务动作。
-3. 明确本次要看的 Datastream id 清单，不许对清单外的数据流
+3. token 先行：本包的每次 tools/call（含上面第 2 步的
+   discover/ping）都必须在 arguments 里带 `_token`。token
+   来源：env `ISTSOS_BRIDGE_TOKEN`，或 token 文件（默认
+   `~/.istsos-agent-bridge.token`；服务端启动时两者皆无会
+   自动生成随机 token 并写入该文件）。完整调用长这样：
+
+   ```json
+   {"method": "tools/call", "params": {"name": "istsos_list_things", "arguments": {"_token": "<token 文件里那串，或 env 里设的值>", "top": 5}}}
+   ```
+
+   回 `BAD_TOKEN` 时先核对 token 来源与文件内容，不要绕过守卫。
+4. 明确本次要看的 Datastream id 清单，不许对清单外的数据流
    擅自批量拉取。
 
 ## 动作清单（v0.1，仅此这些，全部只读）

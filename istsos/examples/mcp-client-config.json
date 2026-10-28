@@ -1,1 +1,14 @@
-{"mcpServers":{"istsos-consumer-bridge":{"args":["<ABSOLUTE_PATH_TO_PACKAGE>/istsos/live/mcp_server.py"],"command":"python3","env":{"ISTSOS_BASE_URL":"http://localhost:8080/istsos4/v1.1","ISTSOS_BRIDGE_TOKEN":"<SET-A-TOKEN-OR-READ-THE-TOKEN-FILE>"}}}}
+{
+  "mcpServers": {
+    "istsos-consumer-bridge": {
+      "args": [
+        "<ABSOLUTE_PATH_TO_PACKAGE>/istsos/live/mcp_server.py"
+      ],
+      "command": "python",
+      "env": {
+        "ISTSOS_BASE_URL": "http://localhost:8080/istsos4/v1.1",
+        "ISTSOS_BRIDGE_TOKEN": "把这里换成你自己的 token（一段足够长的随机字符串）；也可以整行删掉——服务端启动时会把随机生成的 token 写到 ~/.istsos-agent-bridge.token，之后调用时读那个文件"
+      }
+    }
+  }
+}

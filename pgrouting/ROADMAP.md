@@ -13,6 +13,16 @@ pgRouting 主仓当组件。演进方向只有一个：在消费侧这条窄缝�
 |---|---|---|
 | v0.1 | stdio MCP 服务端 5 个只读工具（ping / discover / route_dijkstra / export_route_geojson / network_summary）；scripts/pgrouting_bridge.py 固定三模板＋表名双重校验（标识符正则＋允许集合）＋参数强转；psql 子进程参数数组调用；token 守卫常开（无配置时生成随机 token 落文件 0600）；probe_api.py 只读探针；selftest 假 psql 替身协议自检 | VM 侧已验证（2026-10-28，Python 3.12.3）：py_compile 通过、selftest **12/12 PASS**、probe 如实回报无 psql；**未实机校准**（无 PostgreSQL+pgRouting 环境） |
 
+### 文档与可试性补齐（2026-10-28，不升证据级）
+
+按新用户审计 C1/C2/C3/C6 补齐：README 英文摘要、`live/LIVE.md`
+运行说明、token 来源与完整调用示例、客户端配置的占位符/跨平台
+说明，以及 `examples/sample-network.sql` +
+`examples/docker-compose.yml` 的从零烟雾试用路径（样本预期由边表
+手算独立给出）。这些改动只补说明与试用材料；没有在真实
+PostgreSQL+PostGIS+pgRouting 上执行样本路径或正式校准，状态仍为
+**未实机校准**，不得把 Docker 文件存在或协议自检通过写成已校准。
+
 ## 待实机校准清单（按依赖顺序，工单全文见 docs/CALIBRATION.md）
 
 1. **连通与版本**：真实 psql 连目标库，probe_api.py 全绿：PostGIS 与

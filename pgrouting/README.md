@@ -1,5 +1,17 @@
 # pgRouting 消费侧只读桥（gis-agent-bridges / pgrouting）
 
+> **English** — This package is a *consumer-side, read-only* bridge for
+> pgRouting. Routing is computed inside your own PostgreSQL database; the
+> bridge only retrieves results through three fixed, parameterized SQL
+> templates (a Dijkstra route, a network summary, and the same route as
+> GeoJSON). It provides **no arbitrary-SQL tool and never writes to the
+> database** — its only file write is a GeoJSON export explicitly
+> requested by the caller. Table names must pass both an identifier
+> check and an explicit allowlist. **This is not an official pgRouting,
+> PostGIS, or OSGeo component.** Its current evidence level is
+> protocol-level self-check only: it has **not yet been calibrated
+> against a real PostgreSQL + PostGIS + pgRouting installation**.
+
 让 AI Agent 通过**固定的参数化查询模板**调用 pgRouting 取路径结果：
 查最短路径、看边表规模、把路径导出成 GeoJSON 文件。路径计算发生在
 PostgreSQL 内的 pgRouting 里，本桥只做消费侧的一段——取结果、落文件，
@@ -27,6 +39,8 @@ PostgreSQL 内的 pgRouting 里，本桥只做消费侧的一段——取结果�
 ### MCP 服务端（live/）
 
 纯标准库 stdio MCP 服务端，5 个工具，自检脚本 `live/selftest.py`。
+启动方式、token 的读取来源、环境变量与故障排查见
+[`live/LIVE.md`](live/LIVE.md)。
 
 | 工具 | 作用 | 风险 |
 |---|---|---|
@@ -65,24 +79,116 @@ GeoJSON 文件 ──►（可选）本仓 qgis/ 桥 qgis_add_layer_from_path �
 
 ## 快速上手
 
+### 先跑协议自检（无需 PostgreSQL）
+
 ```bash
-# 1) 准备连接与允许集合（密码只放环境变量或 ~/.pgpass，永不写入仓库文件）
-export PGHOST=localhost PGPORT=5432 PGDATABASE=<库名> PGUSER=<只读用户>
-export PGROUTING_ALLOWED_TABLES=ways          # 允许查询的边表，逗号分隔
-export PGROUTING_EXPORT_DIR=<导出目录>        # 可选，设置后导出只能落在其中
-
-# 2) 协议自检（无需 PostgreSQL，用假 psql 替身验证协议与安全闸）
 python3 live/selftest.py
-
-# 3) 实机探针（有真实环境时跑一次，输出留档）
-python3 scripts/probe_api.py
-
-# 4) 把 live/mcp_server.py 注册进你的 MCP 客户端（示例见 examples/）
+# 期望最后一行：SELFTEST: 12/12 PASS
 ```
 
-token：首次启动若未配置 `PGROUTING_BRIDGE_TOKEN`、也无 token 文件，
-服务端会生成随机 token 写入 `~/.pgrouting-agent-bridge.token`（0600），
-每次 tools/call 须在参数里带 `_token`。
+自检用假 psql 替身，只验证 MCP 协议、参数校验与 token 安全闸，
+不连接数据库，也不是实机校准。
+
+### 用自带样本从零试用（Docker）
+
+`examples/docker-compose.yml` 给出 PostgreSQL 17 + PostGIS 3.5
++ pgRouting 3.7.3 的示例固定版本组合，端口只绑
+`127.0.0.1:54329`；同目录的 `sample-network.sql` 会在数据卷
+首次初始化时建好 `sample_ways`（5 个节点、6 条边）。本轮未实际
+拉取或启动该镜像验证，首次启动需要联网拉取；若该固定标签在你
+使用时不可拉取，应换成同一版本组合的可拉取标签并记录差异，不要
+改用浮动的 `latest`。初始化脚本只在数据卷为空时执行，已经起过
+旧样本时先在 `examples/` 里执行 `docker compose down -v` 删除
+**仅该样本项目**的数据卷，再重新 `up`。
+
+```bash
+# 1) 在 pgrouting/ 目录起样本库，并等健康检查通过
+cd examples
+docker compose up -d --wait
+docker compose ps
+cd ..
+
+# 2) 回到 pgrouting/ 后，设置连接与允许集合
+#    下列演示密码只适用于这个可丢弃的本地样本库，不要复用。
+export PGHOST=127.0.0.1
+export PGPORT=54329
+export PGDATABASE=pgrouting_sample
+export PGUSER=pgrouting
+export PGPASSWORD=pgrouting_local_only
+export PGROUTING_ALLOWED_TABLES=sample_ways
+# 可选：export PGROUTING_EXPORT_DIR=<导出目录>
+
+# 3) 跑探针；ready 应为 true，summary_probe 应命中 sample_ways
+python3 scripts/probe_api.py
+```
+
+探针之后，再把 `live/mcp_server.py` 注册进 MCP 客户端。若客户端
+负责拉起服务端，上面第 2 步的非密码连接变量与
+`PGROUTING_ALLOWED_TABLES` 必须同样写进客户端配置的 `env` 段；
+只在另一个终端 `export` 不会被 GUI 客户端自动继承。密码不要
+写进配置文件，按 `examples/prompts.md` 用 `~/.pgpass` 或客户端
+自己的安全环境变量入口提供。跨平台命令与占位符替换也见该文件。
+
+样本的预期值在运行桥之前已由 `sample-network.sql` 中的边表逐项
+手算写明，参照不来自桥的输出：
+
+- `pgrouting_network_summary(table="sample_ways")`：
+  `node_count=5`、`edge_count=6`；
+- `pgrouting_route_dijkstra(table="sample_ways", start_id=1,
+  end_id=3, directed=true)`：节点序列 `[1, 4, 5, 3]`，边序列
+  `[3, 4, 5]`，`total_cost=3`；
+- 同一条路径导出 GeoJSON：应有 3 个 features。
+
+这条路径是烟雾试用，不等于完成 `docs/CALIBRATION.md` 的正式校准：
+它没有覆盖只读数据库用户、directed=false、无路径与缺 geom 等
+全部验收项，本包的证据级别仍是未实机校准。
+
+### 接自己的数据库
+
+把连接变量换成你的库与只读用户，允许集合逐字列出要查的表，再跑
+探针并注册服务端：
+
+```bash
+export PGHOST=<主机> PGPORT=<端口> PGDATABASE=<库名> PGUSER=<只读用户>
+export PGROUTING_ALLOWED_TABLES=ways          # 允许查询的边表，逗号分隔
+export PGROUTING_EXPORT_DIR=<导出目录>        # 可选，设置后导出只能落在其中
+python3 scripts/probe_api.py
+```
+
+密码只放 `PGPASSWORD` 环境变量或 `~/.pgpass`，永不写入仓库文件。
+
+### token：首次调用先处理这一项
+
+本包与桌面包不同：**服务端不会替调用方自动附带 `_token`**。
+`tools/list` 可以列工具，但每一次 `tools/call`（包括
+`pgrouting_ping` 与 `pgrouting_discover`）都必须在 `arguments`
+里带 `_token`，否则返回 `BAD_TOKEN`。
+
+token 从哪里读，按服务端实际配置二选一：
+
+1. 若给服务端进程设置了 `PGROUTING_BRIDGE_TOKEN`，就用这个值，
+   它优先于 token 文件；
+2. 若没设置该环境变量，就读
+   `~/.pgrouting-agent-bridge.token`（Windows 为
+   `%USERPROFILE%\.pgrouting-agent-bridge.token`）。首次启动若
+   两处都没有，服务端会生成随机 token 并写入该文件（0600）。
+
+带 `_token` 的完整调用形态如下（真实 token 不要写进仓库或回报）：
+
+```json
+{
+  "name": "pgrouting_route_dijkstra",
+  "arguments": {
+    "_token": "<TOKEN_FROM_ENV_OR_TOKEN_FILE>",
+    "table": "sample_ways",
+    "start_id": 1,
+    "end_id": 3,
+    "directed": true
+  }
+}
+```
+
+机制细节与 `BAD_TOKEN` 排查见 [`live/LIVE.md`](live/LIVE.md)。
 
 ## 安全模型
 
@@ -112,6 +218,9 @@ token：首次启动若未配置 `PGROUTING_BRIDGE_TOKEN`、也无 token 文件�
   在查库前被拒、路径/统计正例解析、GeoJSON 落盘、导出路径穿越被拒）。
 - 同机 `scripts/probe_api.py` 实跑如实回报 `psql_available: false`、
   退出码 1——psql 都没有，自然谈不上连通数据库。
+- 本次补入英文摘要、`live/LIVE.md`、样本 SQL 与 Docker 起步环境，
+  只降低试用门槛，**没有新增实机证据，也不改变上面的证据级别**；
+  只有按 CALIBRATION 完成并回写结果后，才可调整校准状态。
 - **不要把自检通过当作已在真实 pgRouting 上验证**：三条模板的真实
   语义（pgr_dijkstra 返回列、ST_AsGeoJSON 输出形态、目标版本差异）
   须按 `docs/CALIBRATION.md` 在真实 PostgreSQL+PostGIS+pgRouting 上
@@ -132,6 +241,7 @@ pgrouting/
 ├── LICENSE / .gitignore
 ├── live/
 │   ├── mcp_server.py     # stdio MCP 服务端（5 个只读工具，token 守卫常开）
+│   ├── LIVE.md           # stdio 形态、token、启动、环境变量与故障排查
 │   └── selftest.py       # 协议自检（假 psql 替身，12 项）
 ├── scripts/
 │   ├── pgrouting_bridge.py  # 连接/校验/SQL 模板库
@@ -140,7 +250,9 @@ pgrouting/
 │   └── CALIBRATION.md    # 实机校准工单（PostgreSQL+pgRouting 环境）
 └── examples/
     ├── mcp-client-config.json
-    └── prompts.md
+    ├── prompts.md
+    ├── docker-compose.yml  # PostgreSQL+PostGIS+pgRouting 样本环境
+    └── sample-network.sql  # 5 节点/6 边样本图与独立手算预期
 ```
 
 ## 免责声明
