@@ -1,0 +1,1 @@
+{"mcpServers":{"stac-consumer-bridge":{"args":["<ABSOLUTE_PATH_TO_PACKAGE>/stac/live/mcp_server.py"],"command":"python","env":{"STAC_BASE_URL":"https://example.org/stac"}}}}

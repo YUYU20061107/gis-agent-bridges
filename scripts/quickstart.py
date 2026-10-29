@@ -2,7 +2,7 @@
 """gis-agent-bridges 快速验证工具（纯标准库，不联网、不安装依赖）。
 
 用途：
-  * --list                 列出 11 个包、MCP 服务名与工具数；
+  * --list                 列出 16 个包、MCP 服务名与工具数；
   * --package qgis --selftest
                            运行指定包的离线协议自检；
   * --package qgis --print-config

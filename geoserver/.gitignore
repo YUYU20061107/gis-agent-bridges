@@ -1,0 +1,5 @@
+__pycache__/
+*.py[cod]
+*.zip
+.geoserver-agent-bridge.token
+*.tmp

@@ -679,6 +679,245 @@
           "note": "file-output: creates a new file at a caller-specified path; no confirm gate by design"
         }
       ]
+    },
+    {
+      "package": "postgis",
+      "server_name": "postgis-consumer-bridge",
+      "server_version": "0.1.0",
+      "port": null,
+      "tool_count": 6,
+      "tools": [
+        {
+          "name": "postgis_ping",
+          "access": "read",
+          "requires_confirm": false,
+          "description": "连通性检查：桥是否在线，并回报 psql 是否可用"
+        },
+        {
+          "name": "postgis_discover",
+          "access": "read",
+          "requires_confirm": false,
+          "description": "环境发现：psql 可用性、连接环境变量设置状态（密码只报是否设置）、允许表集合、SELECT 1 与 PostGIS 版本只读探针（校准用）"
+        },
+        {
+          "name": "postgis_list_spatial_tables",
+          "access": "read",
+          "requires_confirm": false,
+          "description": "列出允许集合内各表在 geometry_columns 里登记的几何列（列名、类型、SRID）；无登记的表如实标 is_spatial=false"
+        },
+        {
+          "name": "postgis_table_columns",
+          "access": "read",
+          "requires_confirm": false,
+          "description": "用固定模板列出某个允许表的属性列（列名与数据类型，information_schema）"
+        },
+        {
+          "name": "postgis_table_summary",
+          "access": "read",
+          "requires_confirm": false,
+          "description": "某个允许表的只读统计：行数（count）与几何范围（ST_Extent）；空表范围为 null 并注明"
+        },
+        {
+          "name": "postgis_export_geojson",
+          "access": "write",
+          "requires_confirm": false,
+          "description": "用固定模板把某个允许表的前 N 个要素经 ST_AsGeoJSON 导出为 GeoJSON 文件（写调用方指定的新文件；filename 只许文件名、须 .geojson；落点受 POSTGIS_EXPORT_DIR 约束；N 上限 1000，超限拒绝）",
+          "note": "file-output: creates a new file at a caller-specified path; no confirm gate by design"
+        }
+      ]
+    },
+    {
+      "package": "geoserver",
+      "server_name": "geoserver-consumer-bridge",
+      "server_version": "0.1.0",
+      "port": null,
+      "tool_count": 6,
+      "tools": [
+        {
+          "name": "geoserver_ping",
+          "access": "read",
+          "requires_confirm": false,
+          "description": "连通性检查：桥是否在线、GeoServer 基地址是否已配置、/rest/about/version 是否可达并回报服务端版本"
+        },
+        {
+          "name": "geoserver_discover",
+          "access": "read",
+          "requires_confirm": false,
+          "description": "环境发现：基地址、认证是否已配置（不报值）、硬上限、token 守卫与校准口径（校准用）"
+        },
+        {
+          "name": "geoserver_list_workspaces",
+          "access": "read",
+          "requires_confirm": false,
+          "description": "列出 GeoServer 的工作区名（REST /rest/workspaces.json）；上限 300 条，超限截断并标注"
+        },
+        {
+          "name": "geoserver_list_layers",
+          "access": "read",
+          "requires_confirm": false,
+          "description": "列出图层（name、type，REST /rest/layers.json）；传 workspace 只看该工作区前缀的图层；上限 300 条，超限截断并标注"
+        },
+        {
+          "name": "geoserver_layer_info",
+          "access": "read",
+          "requires_confirm": false,
+          "description": "看一个图层的详情：类型、默认样式、可查询性，并跟随同源 resource 链接取其要素类型/覆盖的 CRS 与范围（bbox）"
+        },
+        {
+          "name": "geoserver_capabilities_summary",
+          "access": "read",
+          "requires_confirm": false,
+          "description": "取 WMS 或 WFS 的 GetCapabilities 并摘要：服务标题与图层/要素类型名清单（不回传整份 XML）"
+        }
+      ]
+    },
+    {
+      "package": "stac",
+      "server_name": "stac-consumer-bridge",
+      "server_version": "0.1.0",
+      "port": null,
+      "tool_count": 6,
+      "tools": [
+        {
+          "name": "stac_ping",
+          "access": "read",
+          "requires_confirm": false,
+          "description": "连通性检查：桥是否在线、STAC 基地址是否已配置、目录落地页是否可达（回报目录 id/标题与链接关系）"
+        },
+        {
+          "name": "stac_discover",
+          "access": "read",
+          "requires_confirm": false,
+          "description": "环境发现：基地址、API Key 是否已配置（不报值）、硬上限、token 守卫、导出目录与校准口径（校准用）"
+        },
+        {
+          "name": "stac_list_collections",
+          "access": "read",
+          "requires_confirm": false,
+          "description": "【只读】列出 STAC 目录的集合（id、标题、许可、时空范围、提供方）；跟随 next 上限 3 页/300 条，超限标注"
+        },
+        {
+          "name": "stac_get_collection",
+          "access": "read",
+          "requires_confirm": false,
+          "description": "【只读】看一个集合的详情摘要：许可、时空范围、提供方与关键词"
+        },
+        {
+          "name": "stac_search_items",
+          "access": "read",
+          "requires_confirm": false,
+          "description": "【只读】按集合检索影像条目（GET /search）：回报 id、时间、云量、平台与资产键名；limit 上限 100，超限拒绝；可传 bbox 先本地校验"
+        },
+        {
+          "name": "stac_export_items_geojson",
+          "access": "write",
+          "requires_confirm": false,
+          "description": "【只读远端·本地落文件】把按集合检索到的条目导出为 GeoJSON：足印几何＋元数据属性（不含影像本体）；limit 上限 500，超限拒绝",
+          "note": "file-output: creates a new file at a caller-specified path; no confirm gate by design"
+        }
+      ]
+    },
+    {
+      "package": "grass-gis",
+      "server_name": "grass-headless-bridge",
+      "server_version": "0.1.0",
+      "port": null,
+      "tool_count": 7,
+      "tools": [
+        {
+          "name": "grass_ping",
+          "access": "read",
+          "requires_confirm": false,
+          "description": "连通性检查：无头桥是否在线，并回报 grass 是否可用与版本"
+        },
+        {
+          "name": "grass_discover",
+          "access": "read",
+          "requires_confirm": false,
+          "description": "环境发现：grass 可用性与版本、GIS 数据库根目录与其中 location 清单、可跑的固定作业枚举（校准用）"
+        },
+        {
+          "name": "grass_location_info",
+          "access": "read",
+          "requires_confirm": false,
+          "description": "读一个 location 的投影信息与默认区域（纯 Python 解析 PERMANENT/PROJ_INFO 与 WIND，不启动 GRASS）"
+        },
+        {
+          "name": "grass_list_maps",
+          "access": "read",
+          "requires_confirm": false,
+          "description": "用固定 g.list 模板列某 mapset 里的图层名（type 只许 raster/vector/raster_3d/region）"
+        },
+        {
+          "name": "grass_raster_info",
+          "access": "read",
+          "requires_confirm": false,
+          "description": "用固定 r.info -g 模板取一张栅格的范围/分辨率/行列数等键值信息"
+        },
+        {
+          "name": "grass_run_module",
+          "access": "write",
+          "requires_confirm": true,
+          "description": "【执行】按固定作业模板跑一个 GRASS 处理作业（slope_aspect / hillshade / resample_nearest），须 confirm=true；绝不传 --overwrite，输出只能是新图层"
+        },
+        {
+          "name": "grass_export_vector",
+          "access": "write",
+          "requires_confirm": true,
+          "description": "【写】用固定 v.out.ogr 模板把一张矢量图层导出为 GeoJSON 新文件，须 confirm=true；文件已存在拒绝覆盖"
+        }
+      ]
+    },
+    {
+      "package": "gdal",
+      "server_name": "gdal-tool-bridge",
+      "server_version": "0.1.0",
+      "port": null,
+      "tool_count": 7,
+      "tools": [
+        {
+          "name": "gdal_ping",
+          "access": "read",
+          "requires_confirm": false,
+          "description": "连通性检查：桥版本、gdalinfo/ogrinfo 是否可用。"
+        },
+        {
+          "name": "gdal_discover",
+          "access": "read",
+          "requires_confirm": false,
+          "description": "环境发现（校准用）：四件工具的路径/可用性/版本、可转换格式枚举、输入输出政策口径。"
+        },
+        {
+          "name": "gdal_raster_info",
+          "access": "read",
+          "requires_confirm": false,
+          "description": "【只读】gdalinfo -json 探查栅格：驱动、尺寸、波段数、仿射变换、角点坐标、投影（截断回传）。强制 PAM 关闭，不在原件旁写 .aux.xml。"
+        },
+        {
+          "name": "gdal_vector_info",
+          "access": "read",
+          "requires_confirm": false,
+          "description": "【只读】ogrinfo -so -al 探查矢量：图层名、几何类型、要素数、范围、字段名清单。"
+        },
+        {
+          "name": "gdal_raster_stats",
+          "access": "read",
+          "requires_confirm": false,
+          "description": "【只读】gdalinfo -stats -json 取各波段 min/max/mean/stdDev。经 GDAL_PAM_ENABLED=NO 计算，不在原件旁产生 .aux.xml。"
+        },
+        {
+          "name": "gdal_convert_raster",
+          "access": "write",
+          "requires_confirm": true,
+          "description": "【写，须 confirm=true】用 gdal_translate 把栅格转成新文件。format 只许 GTiff/PNG/JPEG（固定 -of 模板，无任意选项透传）；输出必须尚不存在、扩展名与格式匹配；绝不覆盖已有文件。"
+        },
+        {
+          "name": "gdal_convert_vector",
+          "access": "write",
+          "requires_confirm": true,
+          "description": "【写，须 confirm=true】用 ogr2ogr 把矢量转成新文件/数据集。format 只许 GeoJSON/GPKG（固定 -f 模板）；输出必须尚不存在、扩展名与格式匹配；绝不覆盖已有文件。"
+        }
+      ]
     }
   ]
 }

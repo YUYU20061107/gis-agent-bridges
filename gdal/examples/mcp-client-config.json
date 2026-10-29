@@ -1,0 +1,1 @@
+{"mcpServers":{"gdal-tool-bridge":{"args":["<ABSOLUTE_PATH_TO_PACKAGE>/gdal/live/mcp_server.py"],"command":"python","env":{}}}}

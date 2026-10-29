@@ -15,6 +15,9 @@ live in-app MCP bridge — all in one repo for easy reuse.
 形态统一为两种——**无头桥**（在软件进程外盘点、备份工程文件，只对副本动手），
 以及在厂商 API 允许时的**应用内实时 MCP 桥**（桥脚本跑在软件进程内，Agent
 经 MCP 协议操作你当前正打开的工程）。所有写操作都带确认闸，所有能力都如实标注。
+目前合集共 **16 个包、127 个 MCP 工具**：9 个桌面软件桥、5 个消费侧只读桥
+（pgRouting、istSOS、PostGIS、GeoServer、STAC），以及 GRASS GIS、GDAL
+两个无头工具桥。
 
 ## 项目由来
 
@@ -38,13 +41,19 @@ live in-app MCP bridge — all in one repo for easy reuse.
 | FME（Safe Software） | `fme/` | 仅无头 runner | 6 | v0.2 · 已对齐 SuperMap 校准通用升级（selftest 线程读、verify_project 盘点脚本、ENGINEERING-PLAYBOOK；本包无 token 文件）、与官方 Flow MCP 互补、未实机校准 |
 | pgRouting（OSGeo） | `pgrouting/` | 仅消费侧只读（stdio，无常驻桥） | 5 | v0.1 · 固定参数化模板调 pgr_dijkstra 取路径/统计/导出 GeoJSON，无任意 SQL 入口；协议自检 12/12（假 psql 替身）、未实机校准（无 PostgreSQL+pgRouting 环境）；非 pgRouting 官方组件 |
 | istSOS（OGC SensorThings API） | `istsos/` | 仅消费侧只读（stdio，无常驻桥） | 6 | v0.1 · STA 只读工具组（Things/Datastreams/观测/GeoJSON 导出，条数与分页硬上限）；协议自检 12/12（本地假 STA 服务端）、istSOS4 本体未实测；非 istSOS 官方组件 |
+| PostGIS（PostgreSQL 空间扩展） | `postgis/` | 仅消费侧只读（stdio，无常驻桥） | 6 | v0.1 · 固定 SQL 模板经 psql 子进程只读探查空间表（清单/结构/概览/GeoJSON 导出，允许表集合＋导出硬上限），无任意 SQL 入口；协议自检 13/13（假 psql 替身）、未实机校准（无 PostgreSQL+PostGIS 环境）；非 PostGIS 官方组件 |
+| GeoServer（OGC 地图服务器） | `geoserver/` | 仅消费侧只读（stdio，无常驻桥） | 6 | v0.1 · REST 目录只读工具组（工作区/图层清单/图层详情/WMS·WFS 能力摘要，GET-only、认证仅经环境变量、同源跟随防 SSRF）；协议自检 12/12（本地假 GeoServer 服务端）、未实机校准；非 GeoServer 官方组件 |
+| STAC API（时空资产目录） | `stac/` | 仅消费侧只读（stdio，无常驻桥） | 6 | v0.1 · STAC API 只读检索工具组（集合清单/集合详情/条目检索/GeoJSON 导出，bbox 本地校验、条数硬上限、资产只报键名不下载）；协议自检 13/13（本地假 STAC 服务端）、未实机校准；非官方组件 |
+| GRASS GIS（OSGeo） | `grass-gis/` | 仅无头批处理（stdio，无常驻桥） | 7 | v0.1 · 固定模板调 `grass --exec`（列图层/栅格信息只读；坡度坡向/晕渲/重采样三作业与矢量导出走 confirm 闸、绝不传 --overwrite）；协议自检 15/15（假 grass 替身＋假 location）、未实机校准（无 GRASS GIS 环境）；非 GRASS GIS 官方组件 |
+| GDAL/OGR（OSGeo） | `gdal/` | 仅无头工具（stdio，无常驻桥） | 7 | v0.1 · 固定模板调 gdalinfo/ogrinfo 只读探查与 gdal_translate/ogr2ogr 转换（无原始选项透传、子进程强制 GDAL_PAM_ENABLED=NO 防 .aux.xml、转换走 confirm 闸只写新文件）；协议自检 15/15（四假二进制替身）、未实机校准（无 GDAL 环境）；非 GDAL 官方组件 |
 
 ## 统一设计原则
 
 - **只在本机**：应用内桥只监听 127.0.0.1，每次启动生成随机 token，
   请求必须带对 token 才执行。token 有两种传递方式：桌面包由 MCP
   服务端自动读取本地 token 文件，**用户不需要手抄 token**；
-  pgRouting/istsos 消费桥是直接 stdio 服务，工具调用参数须附当前
+  pgRouting/istsos 消费桥与 postgis、geoserver、stac、grass-gis、
+  gdal 五个新包都是直接 stdio 服务，工具调用参数须附当前
   `_token`（见各包 README）。
 - **写操作 confirm 闸门**：内容级写工具缺 `confirm=true` 一律拒绝执行；
   confirm 只能在用户明确同意后填入，Agent 不许自作主张绕过。
@@ -67,7 +76,7 @@ live in-app MCP bridge — all in one repo for easy reuse.
 | 47618 | QGIS |
 | 47619 | GeoScene Pro |
 
-MapGIS、ENVI、Global Mapper、FME、pgRouting、istSOS 无常驻应用内桥，不占端口。
+MapGIS、ENVI、Global Mapper、FME、pgRouting、istSOS、PostGIS、GeoServer、STAC、GRASS GIS、GDAL 无常驻应用内桥，不占端口。
 
 ## 快速开始
 
@@ -89,7 +98,7 @@ python scripts/quickstart.py --package qgis --selftest
 python scripts/quickstart.py --sample-qgis
 ```
 
-第一条列出 11 个包与工具数；第二条跑指定包的离线协议自检；第三条用
+第一条列出 16 个包与工具数；第二条跑指定包的离线协议自检；第三条用
 仓内合成样本工程验证无头解析（样本在 `examples/sample-data/`）。
 Windows 可改用 `scripts/quickstart.ps1`，macOS/Linux 可用
 `scripts/quickstart.sh`。
@@ -177,7 +186,8 @@ Issue 模板，贡献方式见 `CONTRIBUTING.md`。
 - 文件回退模式操作的是副本，**界面不刷新，不等于实时接入**；全部实时
   （应用内）模式目前最高只到「协议自检」级。
 - 未列入上表的包（ArcGIS Pro、QGIS、GeoScene、MapGIS、ENVI、
-  Global Mapper、FME、pgRouting、istSOS）均未实机校准，不要把任何一个包/模式的结论
+  Global Mapper、FME、pgRouting、istSOS、PostGIS、GeoServer、STAC、
+  GRASS GIS、GDAL）均未实机校准，不要把任何一个包/模式的结论
   套到另一个上。
 
 ## 状态与诚实声明

@@ -1,0 +1,6 @@
+__pycache__/
+*.py[cod]
+*.zip
+.stac-agent-bridge.token
+*.tmp
+exports/

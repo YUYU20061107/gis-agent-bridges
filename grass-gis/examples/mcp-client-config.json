@@ -1,0 +1,1 @@
+{"mcpServers":{"grass-headless-bridge":{"args":["<ABSOLUTE_PATH_TO_PACKAGE>/grass-gis/live/mcp_server.py"],"command":"python","env":{"GRASS_BRIDGE_GISDBASE":"<ABSOLUTE_PATH_TO_GRASS_DATABASE>"}}}}

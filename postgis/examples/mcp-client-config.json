@@ -1,0 +1,1 @@
+{"mcpServers":{"postgis-consumer-bridge":{"args":["<ABSOLUTE_PATH_TO_PACKAGE>/postgis/live/mcp_server.py"],"command":"python","env":{"PGDATABASE":"<your_database>","PGHOST":"localhost","PGPORT":"5432","PGUSER":"<your_readonly_user>","POSTGIS_ALLOWED_TABLES":"parcels","POSTGIS_EXPORT_DIR":"<ABSOLUTE_EXPORT_DIR>"}}}}

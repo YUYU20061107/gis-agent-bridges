@@ -5,8 +5,10 @@
 A family of small, safety-gated bridges that let AI agents operate
 mainstream GIS software — headless inventory/backup plus, where the
 vendor API allows, a live in-app MCP bridge — all in one repo for easy
-reuse. Two consumer-side read-only bridges (pgRouting and an OGC
-SensorThings API client) joined the collection in 2026-10.
+reuse. The collection now has **16 packages and 127 MCP tools**: nine
+desktop GIS bridges, five consumer-side read-only bridges (pgRouting,
+istSOS / OGC SensorThings API, PostGIS, GeoServer and STAC API), and
+two headless tool bridges (GRASS GIS and GDAL/OGR).
 
 Every bridge follows the same rules: localhost-only listeners, a random
 per-launch token, a `confirm=true` gate on content-level writes,
@@ -28,6 +30,11 @@ code execution tool, and honest per-mode calibration labels.
 | FME | `fme/` | Headless runner only | 6 | v0.2 · complements the official Flow MCP |
 | pgRouting (OSGeo) | `pgrouting/` | Consumer read-only (stdio, no listener) | 5 | v0.1 · fixed parameterized templates for `pgr_dijkstra`, network summary and GeoJSON export; no arbitrary SQL; protocol selftest 12/12 with a fake psql shim; not real-machine calibrated; not an official pgRouting component |
 | istSOS (OGC SensorThings API) | `istsos/` | Consumer read-only (stdio, no listener) | 6 | v0.1 · read-only STA tools with hard caps; protocol selftest 12/12 against a local fake STA server; istSOS4 itself untested; not an official istSOS component |
+| PostGIS (PostgreSQL spatial extension) | `postgis/` | Consumer read-only (stdio, no listener) | 6 | v0.1 · fixed SQL templates via a psql subprocess (table list / columns / summary / GeoJSON export, allow-list plus export hard cap), no arbitrary SQL; protocol selftest 13/13 with a fake psql shim; not real-machine calibrated; not an official PostGIS component |
+| GeoServer (OGC map server) | `geoserver/` | Consumer read-only (stdio, no listener) | 6 | v0.1 · read-only REST catalog tools (workspaces / layers / layer detail / WMS·WFS capabilities summary), GET-only, credentials via env only, same-origin link following; protocol selftest 12/12 against a local fake GeoServer; not real-machine calibrated; not an official GeoServer component |
+| STAC API (spatiotemporal asset catalog) | `stac/` | Consumer read-only (stdio, no listener) | 6 | v0.1 · read-only STAC API search tools (collections / collection detail / item search / GeoJSON export, local bbox validation, hard caps, asset keys only — no downloads); protocol selftest 13/13 against a local fake STAC server; not real-machine calibrated; not an official component |
+| GRASS GIS (OSGeo) | `grass-gis/` | Headless batch only (stdio, no listener) | 7 | v0.1 · fixed templates over `grass --exec` (map listing / raster info read-only; slope-aspect / hillshade / resample jobs and vector export behind the confirm gate, never `--overwrite`); protocol selftest 15/15 with a fake grass shim and a file-only location; not real-machine calibrated; not an official GRASS GIS component |
+| GDAL/OGR (OSGeo) | `gdal/` | Headless tools only (stdio, no listener) | 7 | v0.1 · fixed templates over gdalinfo/ogrinfo reads and gdal_translate/ogr2ogr conversions (no raw option passthrough, subprocesses forced `GDAL_PAM_ENABLED=NO`, conversions behind the confirm gate and new files only); protocol selftest 15/15 with four fake-binary shims; not real-machine calibrated; not an official GDAL component |
 
 ## Quick start
 
