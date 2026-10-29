@@ -5,10 +5,11 @@
 A family of small, safety-gated bridges that let AI agents operate
 mainstream GIS software — headless inventory/backup plus, where the
 vendor API allows, a live in-app MCP bridge — all in one repo for easy
-reuse. The collection now has **16 packages and 127 MCP tools**: nine
+reuse. The collection now has **17 packages and 135 MCP tools**: nine
 desktop GIS bridges, five consumer-side read-only bridges (pgRouting,
-istSOS / OGC SensorThings API, PostGIS, GeoServer and STAC API), and
-two headless tool bridges (GRASS GIS and GDAL/OGR).
+istSOS / OGC SensorThings API, PostGIS, GeoServer and STAC API), two
+headless tool bridges (GRASS GIS and GDAL/OGR), and one offline GNSS
+track validation bridge (GNSS tracks checked against GIS layers).
 
 Every bridge follows the same rules: localhost-only listeners, a random
 per-launch token, a `confirm=true` gate on content-level writes,
@@ -35,6 +36,7 @@ code execution tool, and honest per-mode calibration labels.
 | STAC API (spatiotemporal asset catalog) | `stac/` | Consumer read-only (stdio, no listener) | 6 | v0.1 · read-only STAC API search tools (collections / collection detail / item search / GeoJSON export, local bbox validation, hard caps, asset keys only — no downloads); protocol selftest 13/13 against a local fake STAC server; not real-machine calibrated; not an official component |
 | GRASS GIS (OSGeo) | `grass-gis/` | Headless batch only (stdio, no listener) | 7 | v0.1 · fixed templates over `grass --exec` (map listing / raster info read-only; slope-aspect / hillshade / resample jobs and vector export behind the confirm gate, never `--overwrite`); protocol selftest 15/15 with a fake grass shim and a file-only location; not real-machine calibrated; not an official GRASS GIS component |
 | GDAL/OGR (OSGeo) | `gdal/` | Headless tools only (stdio, no listener) | 7 | v0.1 · fixed templates over gdalinfo/ogrinfo reads and gdal_translate/ogr2ogr conversions (no raw option passthrough, subprocesses forced `GDAL_PAM_ENABLED=NO`, conversions behind the confirm gate and new files only); protocol selftest 15/15 with four fake-binary shims; not real-machine calibrated; not an official GDAL component |
+| GNSS track validation (NMEA/GPX × GIS layers) | `gnss-validation/` | Offline validation only (stdio, no listener) | 8 | v0.1 · per-point deviation of NMEA/GPX tracks against a local GeoJSON reference layer, jump/stationary-drift detection, fix/HDOP-stratified statistics (self-consistency fallback without a layer, explicitly not accuracy truth); snap/smooth/control-point-offset corrections behind the confirm gate, new files only; protocol selftest 22/22 on synthetic tracks with hand-computed expectations; not real-machine calibrated (calibration ticket: phone-recorded track vs OSM road network); not an official component |
 
 ## Quick start
 

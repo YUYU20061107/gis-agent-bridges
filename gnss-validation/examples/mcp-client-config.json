@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "gnss-validation-bridge": {
+      "command": "python3",
+      "args": ["<repo>/gnss-validation/live/mcp_server.py"],
+      "env": {
+        "GNSS_WORK_DIR": "<your-track-workdir>",
+        "GNSS_BRIDGE_TOKEN": "<same as ~/.gnss-validation-bridge.token, or omit to use the token file>"
+      }
+    }
+  }
+}

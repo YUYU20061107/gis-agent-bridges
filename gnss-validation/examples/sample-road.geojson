@@ -1,0 +1,13 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "properties": {"name": "sample-road", "note": "合成参考道路：沿纬度 22.0 的东西向直线，供 gnss-validation 自检/探针作偏离参照；非真实路网"},
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [[113.0000000, 22.0000000], [113.0020000, 22.0000000]]
+      }
+    }
+  ]
+}

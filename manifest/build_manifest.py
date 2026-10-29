@@ -33,14 +33,16 @@ import tempfile
 
 PACKAGES = ["supermap", "arcgis-pro", "arcmap", "qgis", "geoscene",
             "mapgis", "envi", "globalmapper", "fme", "pgrouting", "istsos",
-            "postgis", "geoserver", "stac", "grass-gis", "gdal"]
+            "postgis", "geoserver", "stac", "grass-gis", "gdal",
+            "gnss-validation"]
 
 # 端口以根 README「端口分配」为准；无常驻应用内桥的包为 None。
 PORTS = {"supermap": 47615, "arcgis-pro": 47616, "arcmap": 47617,
          "qgis": 47618, "geoscene": 47619, "mapgis": None, "envi": None,
          "globalmapper": None, "fme": None, "pgrouting": None,
          "istsos": None, "postgis": None, "geoserver": None,
-         "stac": None, "grass-gis": None, "gdal": None}
+         "stac": None, "grass-gis": None, "gdal": None,
+         "gnss-validation": None}
 
 
 def classify(name, desc, props):

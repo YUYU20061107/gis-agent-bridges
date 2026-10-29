@@ -15,9 +15,9 @@ live in-app MCP bridge — all in one repo for easy reuse.
 形态统一为两种——**无头桥**（在软件进程外盘点、备份工程文件，只对副本动手），
 以及在厂商 API 允许时的**应用内实时 MCP 桥**（桥脚本跑在软件进程内，Agent
 经 MCP 协议操作你当前正打开的工程）。所有写操作都带确认闸，所有能力都如实标注。
-目前合集共 **16 个包、127 个 MCP 工具**：9 个桌面软件桥、5 个消费侧只读桥
-（pgRouting、istSOS、PostGIS、GeoServer、STAC），以及 GRASS GIS、GDAL
-两个无头工具桥。
+目前合集共 **17 个包、135 个 MCP 工具**：9 个桌面软件桥、5 个消费侧只读桥
+（pgRouting、istSOS、PostGIS、GeoServer、STAC），GRASS GIS、GDAL
+两个无头工具桥，以及 1 个 GNSS 离线轨迹验证桥（轨迹×GIS 图层对账）。
 
 ## 项目由来
 
@@ -46,6 +46,7 @@ live in-app MCP bridge — all in one repo for easy reuse.
 | STAC API（时空资产目录） | `stac/` | 仅消费侧只读（stdio，无常驻桥） | 6 | v0.1 · STAC API 只读检索工具组（集合清单/集合详情/条目检索/GeoJSON 导出，bbox 本地校验、条数硬上限、资产只报键名不下载）；协议自检 13/13（本地假 STAC 服务端）、未实机校准；非官方组件 |
 | GRASS GIS（OSGeo） | `grass-gis/` | 仅无头批处理（stdio，无常驻桥） | 7 | v0.1 · 固定模板调 `grass --exec`（列图层/栅格信息只读；坡度坡向/晕渲/重采样三作业与矢量导出走 confirm 闸、绝不传 --overwrite）；协议自检 15/15（假 grass 替身＋假 location）、未实机校准（无 GRASS GIS 环境）；非 GRASS GIS 官方组件 |
 | GDAL/OGR（OSGeo） | `gdal/` | 仅无头工具（stdio，无常驻桥） | 7 | v0.1 · 固定模板调 gdalinfo/ogrinfo 只读探查与 gdal_translate/ogr2ogr 转换（无原始选项透传、子进程强制 GDAL_PAM_ENABLED=NO 防 .aux.xml、转换走 confirm 闸只写新文件）；协议自检 15/15（四假二进制替身）、未实机校准（无 GDAL 环境）；非 GDAL 官方组件 |
+| GNSS 轨迹验证（NMEA/GPX × GIS 图层） | `gnss-validation/` | 仅离线验证（stdio，无常驻桥） | 8 | v0.1 · 轨迹逐点到参考 GeoJSON 图层量偏离、跳点/静止漂移检测、fix·HDOP 分层统计、无图层退化自洽并明示不是精度真值；吸附/平滑/控制点偏移三纠偏走 confirm 闸、只写新文件；协议自检 22/22（合成轨迹、期望值独立手算）、未实机校准（校准工单含手机实走轨迹＋OSM 路网对账）；非官方组件 |
 
 ## 统一设计原则
 
@@ -53,8 +54,8 @@ live in-app MCP bridge — all in one repo for easy reuse.
   请求必须带对 token 才执行。token 有两种传递方式：桌面包由 MCP
   服务端自动读取本地 token 文件，**用户不需要手抄 token**；
   pgRouting/istsos 消费桥与 postgis、geoserver、stac、grass-gis、
-  gdal 五个新包都是直接 stdio 服务，工具调用参数须附当前
-  `_token`（见各包 README）。
+  gdal 五个新包及 gnss-validation 离线验证包都是直接 stdio 服务，
+  工具调用参数须附当前 `_token`（见各包 README）。
 - **写操作 confirm 闸门**：内容级写工具缺 `confirm=true` 一律拒绝执行；
   confirm 只能在用户明确同意后填入，Agent 不许自作主张绕过。
 - **原件只读**：盘点与任何写需求都先 backup、只改副本，原件零写入。
@@ -76,7 +77,7 @@ live in-app MCP bridge — all in one repo for easy reuse.
 | 47618 | QGIS |
 | 47619 | GeoScene Pro |
 
-MapGIS、ENVI、Global Mapper、FME、pgRouting、istSOS、PostGIS、GeoServer、STAC、GRASS GIS、GDAL 无常驻应用内桥，不占端口。
+MapGIS、ENVI、Global Mapper、FME、pgRouting、istSOS、PostGIS、GeoServer、STAC、GRASS GIS、GDAL、GNSS 轨迹验证无常驻应用内桥，不占端口。
 
 ## 快速开始
 

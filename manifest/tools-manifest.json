@@ -918,6 +918,63 @@
           "description": "【写，须 confirm=true】用 ogr2ogr 把矢量转成新文件/数据集。format 只许 GeoJSON/GPKG（固定 -f 模板）；输出必须尚不存在、扩展名与格式匹配；绝不覆盖已有文件。"
         }
       ]
+    },
+    {
+      "package": "gnss-validation",
+      "server_name": "gnss-validation-bridge",
+      "server_version": "0.1.0",
+      "port": null,
+      "tool_count": 8,
+      "tools": [
+        {
+          "name": "gnss_status",
+          "access": "read",
+          "requires_confirm": false,
+          "description": "汇总一个 NMEA 轨迹日志：点数、fix 类型分布、卫星数与 HDOP 范围、起止时间与跨度、解析计数（坏校验和/无定位语句数）。只读本地文件。"
+        },
+        {
+          "name": "gnss_track_read",
+          "access": "read",
+          "requires_confirm": false,
+          "description": "读取 NMEA 或 GPX 轨迹为结构化点列（序号、UTC 时间、经纬度、fix、卫星数、HDOP）。点数硬上限 10000，超限截断并以 truncated 明示；limit 控制本次返回条数。"
+        },
+        {
+          "name": "gnss_validate_against_layer",
+          "access": "read",
+          "requires_confirm": false,
+          "description": "轨迹逐点到参考图层（本地 GeoJSON 线/面）的最短距离：输出偏离分布统计与超过 threshold_m（默认 10 m）的超限点清单（含最近点坐标，可独立复算）。距离为等距圆柱平面近似，见返回的 distance_method。"
+        },
+        {
+          "name": "gnss_detect_jumps",
+          "access": "read",
+          "requires_confirm": false,
+          "description": "跳点/瞬移/静止漂移检测：段速超过 max_speed_mps（默认 60）、加速度超过 max_accel_mps2（默认 15）、以及长时间（默认 ≥30 s）困在小半径（默认 5 m）内却持续抖动（质心 RMS>默认 2 m）的静止漂移段；输出可疑点清单、理由与数值。"
+        },
+        {
+          "name": "gnss_accuracy_report",
+          "access": "read",
+          "requires_confirm": false,
+          "description": "按 fix 类型与 HDOP 段分层的偏离统计（点数、中位数、均方根 RMS）。给 layer 时基于逐点到图层的距离（basis=reference-layer-deviation）；不给 layer 时退化为轨迹自洽统计（相邻段速离散度，basis=self-consistency）——自洽统计不是精度真值，系统性偏移它看不见，结论里会明示。"
+        },
+        {
+          "name": "gnss_correct_snap",
+          "access": "write",
+          "requires_confirm": true,
+          "description": "【写】地图匹配纠偏：把轨迹逐点吸附到参考线/面图层的最近点，写出新 GeoJSON（每点保留原始坐标与修正量）。须 confirm=true；只写新文件、永不覆盖；面图层内点（距离 0）保持原样。"
+        },
+        {
+          "name": "gnss_correct_smooth",
+          "access": "write",
+          "requires_confirm": true,
+          "description": "【写】平滑纠偏：对轨迹坐标做居中滑动平均（窗口 window，≥3 的奇数，默认 5），写出新 GeoJSON（每点保留原始坐标与修正量）。须 confirm=true；只写新文件、永不覆盖。平滑只压随机抖动，不修系统偏移。"
+        },
+        {
+          "name": "gnss_correct_offset",
+          "access": "write",
+          "requires_confirm": true,
+          "description": "【写】控制点偏移校正：给 ≥2 个「轨迹观测点↔真值点」配对，算平均偏移（东/北分量）后整轨平移，写出新 GeoJSON。须 confirm=true；只写新文件、永不覆盖。只给 1 个配对时只报偏移量、不产纠偏文件（单点偏移混有该点自身误差，不能代表系统偏移）。"
+        }
+      ]
     }
   ]
 }
