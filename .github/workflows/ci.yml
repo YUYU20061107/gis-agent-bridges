@@ -2,7 +2,7 @@
 #
 # 本 CI 在没有任何厂商 GIS 软件的 runner 上运行，只验证：
 #   - 全部 Python 文件可编译；
-#   - 11 个包的 live/selftest.py 协议自检通过（initialize / 工具清单 /
+#   - 17 个包的 live/selftest.py 协议自检通过（initialize / 工具清单 /
 #     confirm 闸门 / 错误 token 拒绝等协议层行为）；
 #   - 机读工具清单可由代码重新生成、且与根 README 矩阵数字一致；
 #   - 安全不变量（confirm 闸、只绑 127.0.0.1、无任意执行工具、token
@@ -29,7 +29,7 @@ jobs:
       - name: Per-package protocol selftests (offline, no vendor software)
         run: |
           set -e
-          for pkg in supermap arcgis-pro arcmap qgis geoscene mapgis envi globalmapper fme pgrouting istsos; do
+          for pkg in supermap arcgis-pro arcmap qgis geoscene mapgis envi globalmapper fme pgrouting istsos postgis geoserver stac grass-gis gdal gnss-validation; do
             echo "== $pkg =="
             python "$pkg/live/selftest.py"
           done
