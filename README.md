@@ -48,6 +48,8 @@ live in-app MCP bridge — all in one repo for easy reuse.
 | GDAL/OGR（OSGeo） | `gdal/` | 仅无头工具（stdio，无常驻桥） | 7 | v0.1 · 固定模板调 gdalinfo/ogrinfo 只读探查与 gdal_translate/ogr2ogr 转换（无原始选项透传、子进程强制 GDAL_PAM_ENABLED=NO 防 .aux.xml、转换走 confirm 闸只写新文件）；协议自检 15/15（四假二进制替身）、未实机校准（无 GDAL 环境）；非 GDAL 官方组件 |
 | GNSS 轨迹验证（NMEA/GPX × GIS 图层） | `gnss-validation/` | 仅离线验证（stdio，无常驻桥） | 8 | v0.1 · 轨迹逐点到参考 GeoJSON 图层量偏离、跳点/静止漂移检测、fix·HDOP 分层统计、无图层退化自洽并明示不是精度真值；吸附/平滑/控制点偏移三纠偏走 confirm 闸、只写新文件；协议自检 22/22（合成轨迹、期望值独立手算）、未实机校准（校准工单含手机实走轨迹＋OSM 路网对账）；非官方组件 |
 
+> **付费配套（仅 SuperMap 包）**：SuperMap 桥另有一份校准版操作手册在 Agensi 出售——[SuperMap Bridge Operator](https://www.agensi.io/skills/supermap-bridge-operator-safety-gated-gis-agent-control)（29 美元，一次性买断）：校准顺序、写回规则、错误速查表与汇报纪律。本仓全部桥代码仍免费开源。
+
 ## 统一设计原则
 
 - **只在本机**：应用内桥只监听 127.0.0.1，每次启动生成随机 token，

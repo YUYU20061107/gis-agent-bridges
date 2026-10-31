@@ -38,6 +38,8 @@ code execution tool, and honest per-mode calibration labels.
 | GDAL/OGR (OSGeo) | `gdal/` | Headless tools only (stdio, no listener) | 7 | v0.1 · fixed templates over gdalinfo/ogrinfo reads and gdal_translate/ogr2ogr conversions (no raw option passthrough, subprocesses forced `GDAL_PAM_ENABLED=NO`, conversions behind the confirm gate and new files only); protocol selftest 15/15 with four fake-binary shims; not real-machine calibrated; not an official GDAL component |
 | GNSS track validation (NMEA/GPX × GIS layers) | `gnss-validation/` | Offline validation only (stdio, no listener) | 8 | v0.1 · per-point deviation of NMEA/GPX tracks against a local GeoJSON reference layer, jump/stationary-drift detection, fix/HDOP-stratified statistics (self-consistency fallback without a layer, explicitly not accuracy truth); snap/smooth/control-point-offset corrections behind the confirm gate, new files only; protocol selftest 22/22 on synthetic tracks with hand-computed expectations; not real-machine calibrated (calibration ticket: phone-recorded track vs OSM road network); not an official component |
 
+> **Paid companion (SuperMap package only):** a calibrated operator skill for the SuperMap bridge — calibration order, write-back rules, error table, reporting discipline — is available on [Agensi](https://www.agensi.io/skills/supermap-bridge-operator-safety-gated-gis-agent-control) (US$29, one-time). All bridge code in this repository remains free and open source.
+
 ## Quick start
 
 ```bash
