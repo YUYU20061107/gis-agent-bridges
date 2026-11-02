@@ -928,6 +928,13 @@ def handle_request(req):
                 "traceback_tail": traceback.format_exc()[-600:]}
 
 
+CONN_READ_TIMEOUT_S = 15
+# ^ 单连接读超时（秒）与单请求字节硬上限（2026-11-03 安全修复，审计
+#   finding inapp-bridges:serve-loop-unbounded-read-no-timeout）：防半行
+#   连接在 token 校验之前堵死顺序监听循环、防无界缓冲撑爆宿主进程。
+MAX_REQUEST_BYTES = 4 * 1024 * 1024
+
+
 def serve():
     with open(TOKEN_FILE, "w", encoding="utf-8") as f:
         f.write(TOKEN)
@@ -942,13 +949,17 @@ def serve():
     while True:
         conn, _addr = srv.accept()
         with conn:
+            conn.settimeout(CONN_READ_TIMEOUT_S)
             buf = b""
-            while b"\n" not in buf:
-                chunk = conn.recv(65536)
-                if not chunk:
-                    break
-                buf += chunk
-            if not buf.strip():
+            try:
+                while b"\n" not in buf and len(buf) <= MAX_REQUEST_BYTES:
+                    chunk = conn.recv(65536)
+                    if not chunk:
+                        break
+                    buf += chunk
+            except (socket.timeout, OSError):
+                continue
+            if len(buf) > MAX_REQUEST_BYTES or not buf.strip():
                 continue
             try:
                 req = json.loads(buf.decode("utf-8"))

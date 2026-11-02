@@ -189,6 +189,36 @@ def base_url():
     return raw.rstrip("/") or None
 
 
+
+
+def same_origin(url):
+    """nextLink 跟随守卫（2026-11-03 安全修复，审计 finding
+    istsos:nextlink-followed-without-origin-check）：只许与基地址同
+    scheme＋host＋port，与 geoserver/stac 两包同一口径。"""
+    base = base_url()
+    if not base or not url:
+        return False
+    b = urllib.parse.urlparse(base)
+    u = urllib.parse.urlparse(url)
+    return (b.scheme, b.hostname, b.port) == (u.scheme, u.hostname, u.port)
+
+
+class _SameOriginRedirectHandler(urllib.request.HTTPRedirectHandler):
+    """重定向守卫（2026-11-03 安全修复）：只许重定向回同源，跨源拒绝，
+    防止请求被服务端 3xx 带到未配置的源。"""
+
+    def redirect_request(self, req, fp, code, msg, headers, newurl):
+        if not same_origin(newurl):
+            raise StaError(
+                "STA_REDIRECT_BLOCKED",
+                "服务端试图把请求重定向到非同源地址，已拒绝跟随：%s" % newurl)
+        return urllib.request.HTTPRedirectHandler.redirect_request(
+            self, req, fp, code, msg, headers, newurl)
+
+
+_OPENER = urllib.request.build_opener(_SameOriginRedirectHandler())
+
+
 def _sta_get(url):
     """唯一的网络出口：只发 GET。返回解析后的 JSON（dict）。"""
     req = urllib.request.Request(url, method="GET")
@@ -196,8 +226,10 @@ def _sta_get(url):
     req.add_header("User-Agent",
                    "gis-agent-bridges/%s/%s" % (SERVER_NAME, SERVER_VERSION))
     try:
-        with urllib.request.urlopen(req, timeout=HTTP_TIMEOUT_S) as resp:
+        with _OPENER.open(req, timeout=HTTP_TIMEOUT_S) as resp:
             raw = resp.read(MAX_RESPONSE_BYTES + 1)
+    except StaError:
+        raise
     except urllib.error.HTTPError as e:
         raise StaError("STA_HTTP_ERROR",
                        "STA 服务端返回 HTTP %d: %s" % (e.code, e.reason),
@@ -240,6 +272,10 @@ def _fetch_collection(path, top, max_pages=MAX_PAGES, max_items=MAX_LIST_ITEMS):
         items.extend(value)
         pages += 1
         url = data.get("@iot.nextLink")
+        if url and not same_origin(url):
+            # 服务端给出的 nextLink 指向非同源地址：丢弃并如实标截断
+            truncated = True
+            url = None
         if url and (pages >= max_pages or len(items) >= max_items):
             truncated = True
     if len(items) > max_items:
@@ -483,7 +519,8 @@ def tool_export_observations_geojson(args):
             observations.extend(value)
             pages += 1
             url = data.get("@iot.nextLink")
-            if not url:
+            if not url or not same_origin(url):
+                # nextLink 缺失或指向非同源地址：停止跟随（已取部分照常导出）
                 break
         observations = observations[:limit]
     except StaError as e:

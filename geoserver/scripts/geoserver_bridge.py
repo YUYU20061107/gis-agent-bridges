@@ -112,6 +112,25 @@ def same_origin(url):
     return (b.scheme, b.hostname, b.port) == (u.scheme, u.hostname, u.port)
 
 
+
+class _SameOriginRedirectHandler(urllib.request.HTTPRedirectHandler):
+    """重定向守卫（2026-11-03 安全修复，审计 finding
+    consumer-bridges:urlopen-redirects-escape-origin-guard）：urllib 默认
+    opener 会跟随跨源重定向并把 Authorization 原样转发给目标源；这里只许
+    重定向回与基地址同源的地址，跨源直接拒绝。"""
+
+    def redirect_request(self, req, fp, code, msg, headers, newurl):
+        if not same_origin(newurl):
+            raise BridgeError(
+                "REDIRECT_BLOCKED",
+                "服务端试图把请求重定向到非同源地址，已拒绝跟随：%s" % newurl)
+        return urllib.request.HTTPRedirectHandler.redirect_request(
+            self, req, fp, code, msg, headers, newurl)
+
+
+_OPENER = urllib.request.build_opener(_SameOriginRedirectHandler())
+
+
 # ------------------------------------------------------------------ HTTP
 def http_get(url, accept="application/json"):
     """唯一的网络出口：只发 GET，带响应大小与超时硬上限。
@@ -123,9 +142,11 @@ def http_get(url, accept="application/json"):
     if auth:
         req.add_header("Authorization", auth)
     try:
-        with urllib.request.urlopen(req, timeout=HTTP_TIMEOUT_S) as resp:
+        with _OPENER.open(req, timeout=HTTP_TIMEOUT_S) as resp:
             raw = resp.read(MAX_RESPONSE_BYTES + 1)
             ctype = resp.headers.get("Content-Type") or ""
+    except BridgeError:
+        raise
     except urllib.error.HTTPError as e:
         raise BridgeError("HTTP_ERROR",
                           "GeoServer 返回 HTTP %d: %s" % (e.code, e.reason),
